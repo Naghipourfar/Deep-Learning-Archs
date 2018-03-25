@@ -54,7 +54,7 @@ auto_encoder.fit(x=x_train,
                  validation_data=(x_test, x_test))
 
 # Predict with model
-decoded_imgs = auto_encoder.predict(x_test)
+decoded_images = auto_encoder.predict(x_test)
 
 # Visualization some results
 number_of_digits_to_show = 10
@@ -70,7 +70,7 @@ for i in range(number_of_digits_to_show):
 
     # display reconstruction
     ax = plt.subplot(2, number_of_digits_to_show, i + 1 + number_of_digits_to_show)
-    plt.imshow(decoded_imgs[i].reshape(28, 28))
+    plt.imshow(decoded_images[i].reshape(28, 28))
     plt.gray()
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
