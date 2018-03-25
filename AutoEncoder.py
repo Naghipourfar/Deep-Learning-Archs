@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 # Hyper-Parameters
 neurons = {
     'input': 784,
-    'encode': 128,
+    'encode': 16,
     'decode': 784
 }
 n_epochs = 10
@@ -55,7 +55,6 @@ auto_encoder.fit(x=x_train,
 
 # Predict with model
 decoded_imgs = auto_encoder.predict(x_test)
-
 
 # Visualization some results
 number_of_digits_to_show = 10
