@@ -12,6 +12,11 @@ import matplotlib.pyplot as plt
     Email : mn7697np@gmail.com
     Website: http://ce.sharif.edu/~naghipourfar
 """
+
+"""
+    Building an AutoEncoder 
+"""
+
 # Hyper-Parameters
 neurons = {
     'input': 784,

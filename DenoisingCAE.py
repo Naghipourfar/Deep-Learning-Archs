@@ -10,6 +10,9 @@ from keras.datasets import mnist
     Email : mn7697np@gmail.com
     Website: http://ce.sharif.edu/~naghipourfar
 """
+"""
+    This is a network which is learning the mnist noised data!
+"""
 
 # Hyper-Parameters
 neurons = {
