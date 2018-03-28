@@ -15,3 +15,6 @@ from keras.datasets import mnist
     Website: http://ce.sharif.edu/~naghipourfar
 """
 
+"""
+    Build a CNN to learn MNIST Dataset
+"""
