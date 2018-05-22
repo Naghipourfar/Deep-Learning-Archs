@@ -1,9 +1,10 @@
 import numpy as np
 
 import matplotlib.pyplot as plt
-from keras.layers import Input, Conv2D, MaxPooling2D, UpSampling2D
+from keras.layers import Input, Conv2D, MaxPooling2D, UpSampling2D, Dense
 from keras.models import Model
 from keras.datasets import mnist
+from keras.regularizers import l1
 
 """
     Created by Mohsen Naghipourfar on 3/26/18.
@@ -54,6 +55,10 @@ x = Conv2D(32, (3, 3), activation='relu', padding='same')(x)
 
 encoded = MaxPooling2D((2, 2), padding='same')(x)
 
+# Add Sparsity to Model (!)
+# sparse_encoded = Dense(32, activity_regularizer=l1(10e-5))(encoded)
+
+
 x = Conv2D(32, (3, 3), activation='relu', padding='same')(encoded)
 
 x = UpSampling2D((2, 2))(x)
@@ -83,8 +88,8 @@ auto_encoder.fit(x=x_train_noisy,
 decoded_images = auto_encoder.predict(x_test_noisy)
 
 # Visualization some results
-number_of_digits_to_show = 10
-plt.figure(figsize=(20, 4))
+number_of_digits_to_show = 30
+plt.figure(figsize=(60, 4))
 
 for i in range(number_of_digits_to_show):
     # display original
