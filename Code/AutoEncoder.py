@@ -1,11 +1,8 @@
+import matplotlib.pyplot as plt
 import numpy as np
-
-import tensorflow as tf
+from keras.datasets import mnist
 from keras.layers import Dense, Input
 from keras.models import Model
-from keras.datasets import mnist
-
-import matplotlib.pyplot as plt
 
 """
     Created by Mohsen Naghipourfar on 3/26/18.
