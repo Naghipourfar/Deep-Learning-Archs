@@ -1,10 +1,8 @@
-import numpy as np
-
 import matplotlib.pyplot as plt
-from keras.layers import Input, Conv2D, MaxPooling2D, UpSampling2D, Dense
-from keras.models import Model
+import numpy as np
 from keras.datasets import mnist
-from keras.regularizers import l1
+from keras.layers import Input, Conv2D, MaxPooling2D, UpSampling2D
+from keras.models import Model
 
 """
     Created by Mohsen Naghipourfar on 3/26/18.
@@ -106,4 +104,3 @@ for i in range(number_of_digits_to_show):
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
 plt.show()
-
