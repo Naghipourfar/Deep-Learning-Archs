@@ -220,7 +220,8 @@ if __name__ == '__main__':
     print(x_test.shape, y_test.shape)
     print("*" * 50)
     for q_num in [1, 2, 31, 32]:
-        perceptron = Perceptron(n_features=x_data.shape[1], learning_rate=1e-6, logger_path="../Results/log-%d.csv" % q_num,
+        perceptron = Perceptron(n_features=x_data.shape[1], learning_rate=1e-6,
+                                logger_path="../Results/log-%d.csv" % q_num,
                                 question_number=q_num)
         perceptron.fit(x_train, y_train, validation_set=(x_test, y_test), n_epochs=1000, verbose=1)
         perceptron.print_confusion_matrix(x_test, y_test)
