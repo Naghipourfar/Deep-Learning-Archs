@@ -366,14 +366,16 @@ if __name__ == '__main__':
                 elif OptimizationAlgorithm == "Nesterov":
                     for momentum in [0.7, 0.8, 0.9]:
                         opt_alg = Nesterov(loss, loss_gradients, learning_rate=lr, momentum=momentum)
-                        Nests[loss_name + "_Nesterov_lr=%f_momentum=%.1f" % (lr, momentum)] = run_optimization(opt_alg, point)
+                        Nests[loss_name + "_Nesterov_lr=%f_momentum=%.1f" % (lr, momentum)] = run_optimization(opt_alg,
+                                                                                                               point)
                         visualize_optimization(Nests, loss_name + "_NesterovComparison.pdf")
                         print(loss_name + "_Nesterov_lr=%f_momentum=%.1f" % (lr, momentum) + " Finished!")
                 elif OptimizationAlgorithm == "RMSProp":
                     for decay in [0.7, 0.8, 0.9]:
                         for delta in [1e-6, 1e-7, 1e-8]:
                             opt_alg = RMSProp(loss, loss_gradients, learning_rate=lr, decay_rate=decay, delta=delta)
-                            RMSs[loss_name + "_RMSProp_lr=%f_decay=%.1f_delta=%.8f" % (lr, decay, delta)] = run_optimization(
+                            RMSs[loss_name + "_RMSProp_lr=%f_decay=%.1f_delta=%.8f" % (
+                            lr, decay, delta)] = run_optimization(
                                 opt_alg, point)
                             visualize_optimization(RMSs, loss_name + "_RMSPropComparison.pdf")
                             print(loss_name + "_RMSProp_lr=%f_decay=%.1f_delta=%.8f" % (lr, decay, delta) + " Finished")
@@ -383,10 +385,12 @@ if __name__ == '__main__':
                             opt_alg = Adam(loss, loss_gradients, learning_rate=lr, decay_rate_1=d1, decay_rate_2=d2,
                                            delta=1e-6)
                             Adams[
-                                loss_name + "_Adam_lr=%f_decay1=%.1f_decay2=%.2f_delta=%f" % (lr, d1, d2, 1e-6)] = run_optimization(
+                                loss_name + "_Adam_lr=%f_decay1=%.1f_decay2=%.2f_delta=%f" % (
+                                lr, d1, d2, 1e-6)] = run_optimization(
                                 opt_alg, point)
                             visualize_optimization(Adams, loss_name + "_AdamComparison.pdf")
-                            print(loss_name + "_Adam_lr=%f_decay1=%.1f_decay2=%.2f_delta=%f" % (lr, d1, d2, 1e-6) + " Finished")
+                            print(loss_name + "_Adam_lr=%f_decay1=%.1f_decay2=%.2f_delta=%f" % (
+                            lr, d1, d2, 1e-6) + " Finished")
                 elif OptimizationAlgorithm == "NewtonMethod":
                     for gamma in [1e-2, 1e-3, 1e-4]:
                         opt_alg = NewtonMethod(loss, loss_gradients, loss_hessian, gamma=gamma)
