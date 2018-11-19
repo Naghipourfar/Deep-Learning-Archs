@@ -180,7 +180,7 @@ class Perceptron(object):
         plt.legend(loc="best")
         plt.savefig("../Results/acc-%d.pdf" % self.question_number)
 
-    def print_confusion_matrix(self, x_test, y_test):
+    def print_confusion_matrix_latex(self, x_test, y_test):
         n_samples = x_test.shape[0]
         n_positive_samples = 0
         n_negative_samples = 0
