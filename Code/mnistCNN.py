@@ -24,10 +24,10 @@ def convolution_layer(x, filters=64, filter_window=(5, 5), stride=1, n_input_cha
     with tf.name_scope(name_scope):
         weights = tf.Variable(
             tf.truncated_normal(shape=[filter_window[0], filter_window[1], n_input_channels, filters], mean=0.0,
-                                stddev=0.2),
+                                stddev=0.1),
             name="Weights")
 
-        biases = tf.Variable(tf.constant(0.1, shape=[filters]), name="Bias")
+        biases = tf.Variable(tf.truncated_normal(shape=[filters], mean=0.0, stddev=0.1), name="Bias")
         convolution = tf.nn.conv2d(x, weights, strides=[1, stride, stride, 1], padding="VALID")
 
         convolution += biases
@@ -36,6 +36,38 @@ def convolution_layer(x, filters=64, filter_window=(5, 5), stride=1, n_input_cha
         # tf.summary.image("Weights", weights)
         # tf.summary.image("Biases", biases)
         return output
+
+
+def batch_normalization(x, n_out, phase_train):
+    """
+    Batch normalization on convolutional maps.
+    Ref.: http://stackoverflow.com/questions/33949786/how-could-i-use-batch-normalization-in-tensorflow
+    Args:
+        x:           Tensor, 4D BHWD input maps
+        n_out:       integer, depth of input maps
+        phase_train: boolean tf.Varialbe, true indicates training phase
+        scope:       string, variable scope
+    Return:
+        normed:      batch-normalized maps
+    """
+    with tf.variable_scope('BatchNormalization'):
+        beta = tf.Variable(tf.constant(0.0, shape=[n_out]),
+                           name='beta', trainable=True)
+        gamma = tf.Variable(tf.constant(1.0, shape=[n_out]),
+                            name='gamma', trainable=True)
+        batch_mean, batch_var = tf.nn.moments(x, [0, 1, 2], name='moments')
+        ema = tf.train.ExponentialMovingAverage(decay=0.5)
+
+        def mean_var_with_update():
+            ema_apply_op = ema.apply([batch_mean, batch_var])
+            with tf.control_dependencies([ema_apply_op]):
+                return tf.identity(batch_mean), tf.identity(batch_var)
+
+        mean, var = tf.cond(phase_train,
+                            mean_var_with_update,
+                            lambda: (ema.average(batch_mean), ema.average(batch_var)))
+        normed = tf.nn.batch_normalization(x, mean, var, beta, gamma, 1e-3)
+    return normed
 
 
 class CNN(object):
@@ -53,7 +85,8 @@ class CNN(object):
         self.pooling_shapes = pooling_shapes
         self.x = tf.placeholder(dtype=tf.float32, shape=(None, 784), name="input")
         self.y = tf.placeholder(dtype=tf.float32, shape=(None, n_outputs), name="label")
-        self.keep_prob = tf.placeholder(dtype=tf.float32, shape=())
+        self.keep_prob = tf.placeholder(tf.float32, name="Dropout_rate")
+        self.phase_train = tf.placeholder(tf.bool, name='training_phase')
         output = self.create_CNN()
         self.compile(output)
         self.save_folder = save_folder
@@ -61,8 +94,8 @@ class CNN(object):
             import shutil
             shutil.rmtree("../Results/tensorboard/" + save_folder + "_train")
             shutil.rmtree("../Results/tensorboard/" + save_folder + "_test")
-        os.mkdir("../Results/tensorboard/" + save_folder + "_train")
-        os.mkdir("../Results/tensorboard/" + save_folder + "_test")
+        os.makedirs("../Results/tensorboard/" + save_folder + "_train", exist_ok=True)
+        os.makedirs("../Results/tensorboard/" + save_folder + "_test", exist_ok=True)
 
     def create_CNN(self):
         max_pool = tf.reshape(self.x, shape=(-1, 28, 28, 1), name="input")
@@ -73,6 +106,8 @@ class CNN(object):
                                             stride=1,
                                             n_input_channels=max_pool.get_shape().as_list()[3],
                                             name_scope="Conv_%d" % (i + 1))
+            convolution = batch_normalization(convolution, self.filters[i], self.phase_train)
+            convolution = tf.nn.relu(convolution)
             max_pool = max_pooling(convolution,
                                    pooling_shape=self.pooling_shapes[i],
                                    name_scope="MaxPooling_%d" % (i + 1))
@@ -84,14 +119,14 @@ class CNN(object):
         fully_connected_layer = self.dense(flatten, flatten.get_shape().as_list()[1], 256, activation=tf.nn.relu,
                                            name_scope="Dense_1")
         fully_connected_layer = tf.nn.dropout(fully_connected_layer, 0.5)
-        output_layer = self.dense(fully_connected_layer, 256, 10, activation=tf.nn.softmax_cross_entropy_with_logits_v2,
+        output_layer = self.dense(fully_connected_layer, 256, 10, activation=tf.nn.softmax,
                                   name_scope="Output_Layer")
         return output_layer
 
     def compile(self, output):
         with tf.name_scope("Cross_Entropy"):
             self.cross_entropy = tf.reduce_mean(
-                tf.nn.softmax_cross_entropy_with_logits_v2(labels=self.y,
+                tf.nn.softmax_cross_entropy_with_logits(labels=self.y,
                                                            logits=output))
 
         with tf.name_scope("Train"):
@@ -109,11 +144,11 @@ class CNN(object):
     def dense(self, x, n_input_neurons, n_output_neurons, activation=tf.nn.relu, name_scope="Dense_1"):
         with tf.name_scope(name_scope):
             w = tf.Variable(tf.truncated_normal(shape=(n_input_neurons, n_output_neurons),
-                                                mean=0, stddev=0.2, seed=1),
+                                                mean=0, stddev=0.1, seed=2018),
                             name="Weight")
             b = tf.Variable(tf.constant(0.1, shape=[n_output_neurons]), name="Bias")
             hidden_output = tf.add(tf.matmul(x, w), b)
-            if activation == tf.nn.softmax_cross_entropy_with_logits_v2:
+            if activation == tf.nn.softmax:
                 activation_output = tf.nn.softmax(logits=hidden_output)
             else:
                 activation_output = activation(hidden_output)
@@ -139,19 +174,24 @@ class CNN(object):
             for i in range(n_epochs):
                 train_batch_xs, train_batch_ys = mnist.train.next_batch(batch_size)
                 sess.run(self.optimizer,
-                         feed_dict={self.x: train_batch_xs, self.y: train_batch_ys, self.keep_prob: keep_prob})
+                         feed_dict={self.x: train_batch_xs, self.y: train_batch_ys, self.keep_prob: keep_prob,
+                                    self.phase_train: True})
                 if (i + 1) % 1 == 0:
-                    summaries = sess.run(merge, feed_dict={self.x: train_batch_xs, self.y: train_batch_ys})
+                    summaries = sess.run(merge, feed_dict={self.x: train_batch_xs, self.y: train_batch_ys,
+                                                           self.keep_prob: keep_prob, self.phase_train: True})
                     train_file_writer.add_summary(summaries, i)
 
-                    summaries = sess.run(merge, feed_dict={self.x: test_batch_xs, self.y: test_batch_ys})
+                    summaries = sess.run(merge, feed_dict={self.x: test_batch_xs, self.y: test_batch_ys,
+                                                           self.keep_prob: keep_prob, self.phase_train: False})
                     test_file_writer.add_summary(summaries, i)
 
                     train_accuracy, train_loss = sess.run((self.accuracy, self.cross_entropy),
-                                                          feed_dict={self.x: train_batch_xs, self.y: train_batch_ys})
+                                                          feed_dict={self.x: train_batch_xs, self.y: train_batch_ys,
+                                                                     self.keep_prob: keep_prob, self.phase_train: True})
 
                     test_accuracy, test_loss = sess.run([self.accuracy, self.cross_entropy],
-                                                        feed_dict={self.x: test_batch_xs, self.y: test_batch_ys})
+                                                        feed_dict={self.x: test_batch_xs, self.y: test_batch_ys,
+                                                                   self.keep_prob: keep_prob, self.phase_train: False})
                     if verbose == 1:
                         print(
                             "Epoch: %5i\t Train Accuracy: %.4f %%\t Train Loss: %.4f\t Validation Accuracy: %.4f %%\t "
