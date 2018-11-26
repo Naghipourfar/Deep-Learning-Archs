@@ -22,17 +22,6 @@ def max_pooling(x, pooling_shape=(2, 2), name_scope="MaxPooling_1"):
 
 
 def batch_normalization(x, n_out, phase_train):
-    """
-    Batch normalization on convolutional maps.
-    Ref.: http://stackoverflow.com/questions/33949786/how-could-i-use-batch-normalization-in-tensorflow
-    Args:
-        x:           Tensor, 4D BHWD input maps
-        n_out:       integer, depth of input maps
-        phase_train: boolean tf.Varialbe, true indicates training phase
-        scope:       string, variable scope
-    Return:
-        normed:      batch-normalized maps
-    """
     with tf.variable_scope('BatchNormalization'):
         beta = tf.Variable(tf.constant(0.0, shape=[n_out]),
                            name='beta', trainable=True)
@@ -55,7 +44,7 @@ def batch_normalization(x, n_out, phase_train):
 
 class CNN(object):
     def __init__(self, filters=None, filter_windows=None, pooling_shapes=None, n_outputs=10,
-                 save_folder=None):
+                 save_folder=None, task_num=1):
         tf.reset_default_graph()
         if filters is None:
             filters = [64, 64]
@@ -72,15 +61,29 @@ class CNN(object):
         self.phase_train = tf.placeholder(tf.bool, name='training_phase')
         self.convolution_weights = {}
         self.convolution_layers = {}
-        output = self.create_CNN()
+        self.task_num = task_num
+        if task_num == 1:
+            output = self.create_CNN()
+        if task_num == 2:
+            output = self.create_CNN()
+        elif task_num == 3:
+            output = self.create_CNN()
+        else:
+            output = self.create_CNN_v2()
+        self.variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="input")
+        self.variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="Conv_1")
+        self.variables += tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="MaxPooling_1")
+        self.variables += tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="Conv_2")
+        self.variables += tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="MaxPooling_2")
+        self.variables += tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="Dense_1")
         self.compile(output)
         self.save_folder = save_folder
-        if os.path.exists("../Results/tensorboard/" + save_folder + "_train"):
+        if os.path.exists("../Results/tensorboard/" + save_folder + "_train_" + str(task_num)):
             import shutil
-            shutil.rmtree("../Results/tensorboard/" + save_folder + "_train")
-            shutil.rmtree("../Results/tensorboard/" + save_folder + "_test")
-        os.makedirs("../Results/tensorboard/" + save_folder + "_train", exist_ok=True)
-        os.makedirs("../Results/tensorboard/" + save_folder + "_test", exist_ok=True)
+            shutil.rmtree("../Results/tensorboard/" + save_folder + "_train_" + str(task_num))
+            shutil.rmtree("../Results/tensorboard/" + save_folder + "_test_" + str(task_num))
+        os.makedirs("../Results/tensorboard/" + save_folder + "_train_" + str(task_num), exist_ok=True)
+        os.makedirs("../Results/tensorboard/" + save_folder + "_test_" + str(task_num), exist_ok=True)
 
     def create_CNN(self):
         max_pool = tf.reshape(self.x, shape=(-1, 28, 28, 1), name="input")
@@ -106,6 +109,33 @@ class CNN(object):
                                            name_scope="Dense_1")
         fully_connected_layer = tf.nn.dropout(fully_connected_layer, 0.5)
         output_layer = self.dense(fully_connected_layer, 256, 10, activation=tf.nn.softmax,
+                                  name_scope="Output_Layer")
+        return output_layer
+
+    def create_CNN_v2(self):
+        max_pool = tf.reshape(self.x, shape=(-1, 28, 28, 1), name="input")
+        for i in range(len(self.filters)):
+            convolution = self.convolution_layer(max_pool,
+                                                 filters=self.filters[i],
+                                                 filter_window=self.filter_windows[i],
+                                                 stride=1,
+                                                 n_input_channels=max_pool.get_shape().as_list()[3],
+                                                 name_scope="Conv_%d" % (i + 1), trainable=False)
+            convolution = batch_normalization(convolution, self.filters[i], self.phase_train)
+            convolution = tf.nn.relu(convolution)
+            self.convolution_layers["Conv_%d" % (i + 1)] = convolution
+            max_pool = max_pooling(convolution,
+                                   pooling_shape=self.pooling_shapes[i],
+                                   name_scope="MaxPooling_%d" % (i + 1))
+        n_flatten_neurons = 1
+        for i in max_pool.get_shape().as_list()[1:]:
+            n_flatten_neurons *= i
+        flatten = tf.reshape(max_pool, [-1, n_flatten_neurons])
+
+        fully_connected_layer = self.dense(flatten, flatten.get_shape().as_list()[1], 256, activation=tf.nn.relu,
+                                           name_scope="Dense_1", trainable=False)
+        fully_connected_layer = tf.nn.dropout(fully_connected_layer, 0.5)
+        output_layer = self.dense(fully_connected_layer, 256, 2, activation=tf.nn.softmax,
                                   name_scope="Output_Layer")
         return output_layer
 
@@ -135,9 +165,11 @@ class CNN(object):
                                                         logits=output))
 
         with tf.name_scope("Train"):
-            self.optimizer = tf.train.GradientDescentOptimizer(learning_rate=1e-2).minimize(
-                self.cross_entropy)
-
+            if self.task_num == 4:
+                self.optimizer = tf.train.GradientDescentOptimizer(learning_rate=1e-2).minimize(
+                    self.cross_entropy, var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="Output_Layer"))
+            else:
+                self.optimizer = tf.train.GradientDescentOptimizer(learning_rate=1e-2).minimize(self.cross_entropy)
         with tf.name_scope("accuracy"):
             correct_prediction = tf.equal(tf.argmax(output, axis=1),
                                           tf.argmax(self.y, axis=1))
@@ -166,16 +198,66 @@ class CNN(object):
         init = tf.global_variables_initializer()
         saver = tf.train.Saver()
         with tf.Session() as sess:
-            train_file_writer = tf.summary.FileWriter(logdir="../Results/tensorboard/%s" % self.save_folder + "_train",
-                                                      graph=sess.graph)
-            test_file_writer = tf.summary.FileWriter(logdir="../Results/tensorboard/%s" % self.save_folder + "_test",
-                                                     graph=sess.graph)
+            train_file_writer = tf.summary.FileWriter(
+                logdir="../Results/tensorboard/%s" % self.save_folder + "_train_" + str(self.task_num),
+                graph=sess.graph)
+            test_file_writer = tf.summary.FileWriter(
+                logdir="../Results/tensorboard/%s" % self.save_folder + "_test_" + str(self.task_num),
+                graph=sess.graph)
 
             sess.run(init)
 
             sess.run(tf.global_variables_initializer())
             mnist = load_data()
             test_batch_xs, test_batch_ys = mnist.validation.next_batch(10000)
+            train_batch_xs, train_batch_ys = mnist.validation.next_batch(40000)
+            if self.task_num == 4:
+                indices = []
+                for idx, test_batch_y in enumerate(test_batch_ys):
+                    if test_batch_y[1] == 1 or test_batch_y[4] == 1:
+                        indices.append(idx)
+                test_batch_xs = test_batch_xs[indices]
+                test_batch_ys = test_batch_ys[indices]
+                test_batch_ys = test_batch_ys[:, [1, 4]]
+
+                indices = []
+                for idx, train_batch_y in enumerate(train_batch_ys):
+                    if train_batch_y[1] == 1 or train_batch_y[4] == 1:
+                        indices.append(idx)
+                train_batch_xs = train_batch_xs[indices]
+                train_batch_ys = train_batch_ys[indices]
+                train_batch_ys = train_batch_ys[:, [1, 4]]
+
+                for i in range(n_epochs):
+                    sess.run(self.optimizer,
+                             feed_dict={self.x: train_batch_xs, self.y: train_batch_ys, self.keep_prob: keep_prob,
+                                        self.phase_train: True})
+                    if (i + 1) % 50 == 0:
+                        summaries = sess.run(merge, feed_dict={self.x: train_batch_xs, self.y: train_batch_ys,
+                                                               self.keep_prob: keep_prob, self.phase_train: True})
+                        train_file_writer.add_summary(summaries, i)
+
+                        summaries = sess.run(merge, feed_dict={self.x: test_batch_xs, self.y: test_batch_ys,
+                                                               self.keep_prob: keep_prob, self.phase_train: False})
+                        test_file_writer.add_summary(summaries, i)
+
+                        train_accuracy, train_loss = sess.run((self.accuracy, self.cross_entropy),
+                                                              feed_dict={self.x: train_batch_xs, self.y: train_batch_ys,
+                                                                         self.keep_prob: keep_prob,
+                                                                         self.phase_train: True})
+
+                        test_accuracy, test_loss = sess.run([self.accuracy, self.cross_entropy],
+                                                            feed_dict={self.x: test_batch_xs, self.y: test_batch_ys,
+                                                                       self.keep_prob: keep_prob,
+                                                                       self.phase_train: False})
+                        if verbose == 1:
+                            print(
+                                "Epoch: %5i\t Train Accuracy: %.4f %%\t Train Loss: %.4f\t Validation Accuracy: %.4f %%\t "
+                                "Validation "
+                                "Loss: %.4f" % (
+                                    i + 1, 100.0 * train_accuracy, train_loss, 100.0 * test_accuracy, test_loss))
+                        # save_image(sess.run(self.convolution_weights["Conv_1"]))
+                return
             for i in range(n_epochs):
                 train_batch_xs, train_batch_ys = mnist.train.next_batch(batch_size)
                 sess.run(self.optimizer,
@@ -203,29 +285,41 @@ class CNN(object):
                             "Validation "
                             "Loss: %.4f" % (
                                 i + 1, 100.0 * train_accuracy, train_loss, 100.0 * test_accuracy, test_loss))
-                    save_image(sess.run(self.convolution_weights["Conv_1"]))
                     chkpt_path = "../Results/CNN_iter_%4d.ckpt" % (i + 1)
                     saver.save(sess, chkpt_path)
 
     def restore(self, path="../Results/CNN_iter_10000.ckpt"):
-        saver = tf.train.Saver()
         with tf.Session() as sess:
-            saver.restore(sess, path)
-            mnist = load_data()
-            test_batch_xs, test_batch_ys = mnist.validation.next_batch(10000)
-            keep_prob = 0.5
-            for test_batch_x, test_batch_y in zip(test_batch_xs, test_batch_ys):
-                if test_batch_y[5] == 1:
-                    test_batch_x = np.reshape(test_batch_x, newshape=(1, 784))
-                    test_batch_y = np.reshape(test_batch_y, newshape=(1, 10))
-                    conv_1_output, conv_2_output = sess.run(
-                        [self.convolution_layers["Conv_1"], self.convolution_layers["Conv_2"]],
-                        feed_dict={self.x: test_batch_x, self.y: test_batch_y,
-                                   self.keep_prob: keep_prob,
-                                   self.phase_train: False})
-                    save_image(conv_1_output, path="../Results/conv1_images/", filename="Conv_1")
-                    save_image(conv_2_output, path="../Results/conv2_images/", filename="Conv_2")
-                    break
+            if self.task_num == 2:
+                saver = tf.train.Saver()
+                saver.restore(sess, path)
+                save_image(sess.run(self.convolution_weights["Conv_1"]))
+            if self.task_num == 3:
+                saver = tf.train.Saver()
+                saver.restore(sess, path)
+                self.save_a_5_image_conv_outputs(sess)
+            else:
+                saver = tf.train.Saver(self.variables)
+                saver.restore(sess, path)
+
+    def save_a_5_image_conv_outputs(self, sess):
+        mnist = load_data()
+        test_batch_xs, test_batch_ys = mnist.validation.next_batch(10000)
+        keep_prob = 0.5
+        for test_batch_x, test_batch_y in zip(test_batch_xs, test_batch_ys):
+            if test_batch_y[5] == 1:
+                test_batch_x = np.reshape(test_batch_x, newshape=(1, 784))
+                test_batch_y = np.reshape(test_batch_y, newshape=(1, 10))
+                conv_1_output, conv_2_output = sess.run(
+                    [self.convolution_layers["Conv_1"], self.convolution_layers["Conv_2"]],
+                    feed_dict={self.x: test_batch_x, self.y: test_batch_y,
+                               self.keep_prob: keep_prob,
+                               self.phase_train: False})
+                test_batch_x = np.reshape(test_batch_x, newshape=(28, 28))
+                save_image(test_batch_x, path="../Results/", filename="5.png")
+                save_image(conv_1_output, path="../Results/conv1_images/", filename="Conv_1")
+                save_image(conv_2_output, path="../Results/conv2_images/", filename="Conv_2")
+                break
 
 
 def load_data():
@@ -242,13 +336,16 @@ def save_image(output, path="../Results/filter_images/", filename="filter"):
             # Rescale to 0-255 and convert to uint8
             rescaled = (255.0 / output[i, :, :].max() * (output[i, :, :] - output[i, :, :].min())).astype(np.uint8)
             scipy.misc.imsave(path + "filter_" + str(i + 1) + ".png", rescaled)
-    else:
+    elif filename.startswith("Conv"):
         convolution = np.reshape(output, newshape=(output.shape[3], output.shape[1], output.shape[2]))
         for i in range(64):
             # Rescale to 0-255 and convert to uint8
             rescaled = (255.0 / convolution[i, :, :].max() * (
                     convolution[i, :, :] - convolution[i, :, :].min())).astype(np.uint8)
             scipy.misc.imsave(path + filename + "_" + str(i + 1) + ".png", rescaled)
+    else:
+        rescaled = (255.0 / output.max() * (output - output.min())).astype(np.uint8)
+        scipy.misc.imsave(path + filename + ".png", rescaled)
 
 
 if __name__ == '__main__':
@@ -256,6 +353,18 @@ if __name__ == '__main__':
     filter_windows = [(5, 5), (5, 5)]
     pooling_shapes = [(2, 2), (2, 2)]
     model = CNN(filters=filters, filter_windows=filter_windows, pooling_shapes=pooling_shapes, n_outputs=10,
-                save_folder="CNN")
+                save_folder="CNN", task_num=1)
+    model.fit(n_epochs=10000, batch_size=64, verbose=1)
+
+    model = CNN(filters=filters, filter_windows=filter_windows, pooling_shapes=pooling_shapes, n_outputs=10,
+                save_folder="CNN", task_num=2)
     model.restore()
-    # model.fit(n_epochs=10000, batch_size=64, verbose=1)
+
+    model = CNN(filters=filters, filter_windows=filter_windows, pooling_shapes=pooling_shapes, n_outputs=10,
+                save_folder="CNN", task_num=3)
+    model.restore()
+
+    model = CNN(filters=filters, filter_windows=filter_windows, pooling_shapes=pooling_shapes, n_outputs=2,
+                save_folder="CNN", task_num=3)
+    model.restore()
+    model.fit(n_epochs=10000, batch_size=64, verbose=1)
