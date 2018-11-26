@@ -1,5 +1,7 @@
 import os
 
+import numpy as np
+import scipy
 import tensorflow as tf
 
 """
@@ -16,25 +18,6 @@ def max_pooling(x, pooling_shape=(2, 2), name_scope="MaxPooling_1"):
         kernel_size = [1, pooling_shape[0], pooling_shape[1], 1]
         strides = [1, pooling_shape[0], pooling_shape[1], 1]
         output = tf.nn.max_pool(x, kernel_size, strides, padding="VALID")
-        return output
-
-
-def convolution_layer(x, filters=64, filter_window=(5, 5), stride=1, n_input_channels=1,
-                      name_scope="Conv2D_1"):
-    with tf.name_scope(name_scope):
-        weights = tf.Variable(
-            tf.truncated_normal(shape=[filter_window[0], filter_window[1], n_input_channels, filters], mean=0.0,
-                                stddev=0.1),
-            name="Weights")
-
-        biases = tf.Variable(tf.truncated_normal(shape=[filters], mean=0.0, stddev=0.1), name="Bias")
-        convolution = tf.nn.conv2d(x, weights, strides=[1, stride, stride, 1], padding="VALID")
-
-        convolution += biases
-
-        output = tf.nn.relu(convolution)
-        # tf.summary.image("Weights", weights)
-        # tf.summary.image("Biases", biases)
         return output
 
 
@@ -87,6 +70,8 @@ class CNN(object):
         self.y = tf.placeholder(dtype=tf.float32, shape=(None, n_outputs), name="label")
         self.keep_prob = tf.placeholder(tf.float32, name="Dropout_rate")
         self.phase_train = tf.placeholder(tf.bool, name='training_phase')
+        self.convolution_weights = {}
+        self.convolution_layers = {}
         output = self.create_CNN()
         self.compile(output)
         self.save_folder = save_folder
@@ -100,14 +85,15 @@ class CNN(object):
     def create_CNN(self):
         max_pool = tf.reshape(self.x, shape=(-1, 28, 28, 1), name="input")
         for i in range(len(self.filters)):
-            convolution = convolution_layer(max_pool,
-                                            filters=self.filters[i],
-                                            filter_window=self.filter_windows[i],
-                                            stride=1,
-                                            n_input_channels=max_pool.get_shape().as_list()[3],
-                                            name_scope="Conv_%d" % (i + 1))
+            convolution = self.convolution_layer(max_pool,
+                                                 filters=self.filters[i],
+                                                 filter_window=self.filter_windows[i],
+                                                 stride=1,
+                                                 n_input_channels=max_pool.get_shape().as_list()[3],
+                                                 name_scope="Conv_%d" % (i + 1))
             convolution = batch_normalization(convolution, self.filters[i], self.phase_train)
             convolution = tf.nn.relu(convolution)
+            self.convolution_layers["Conv_%d" % (i + 1)] = convolution
             max_pool = max_pooling(convolution,
                                    pooling_shape=self.pooling_shapes[i],
                                    name_scope="MaxPooling_%d" % (i + 1))
@@ -123,11 +109,30 @@ class CNN(object):
                                   name_scope="Output_Layer")
         return output_layer
 
+    def convolution_layer(self, x, filters=64, filter_window=(5, 5), stride=1, n_input_channels=1,
+                          name_scope="Conv2D_1", trainable=True):
+        with tf.name_scope(name_scope):
+            weights = tf.Variable(
+                tf.truncated_normal(shape=[filter_window[0], filter_window[1], n_input_channels, filters], mean=0.0,
+                                    stddev=0.1),
+                name="Weights", trainable=trainable)
+            self.convolution_weights[name_scope] = weights
+            biases = tf.Variable(tf.truncated_normal(shape=[filters], mean=0.0, stddev=0.1), name="Bias",
+                                 trainable=trainable)
+            convolution = tf.nn.conv2d(x, weights, strides=[1, stride, stride, 1], padding="VALID")
+
+            convolution += biases
+
+            output = tf.nn.relu(convolution)
+            # tf.summary.image("Weights", weights)
+            # tf.summary.image("Biases", biases)
+            return output
+
     def compile(self, output):
         with tf.name_scope("Cross_Entropy"):
             self.cross_entropy = tf.reduce_mean(
                 tf.nn.softmax_cross_entropy_with_logits(labels=self.y,
-                                                           logits=output))
+                                                        logits=output))
 
         with tf.name_scope("Train"):
             self.optimizer = tf.train.GradientDescentOptimizer(learning_rate=1e-2).minimize(
@@ -141,12 +146,12 @@ class CNN(object):
         tf.summary.scalar("Cross_Entropy", self.cross_entropy)
         tf.summary.scalar("accuracy", self.accuracy)
 
-    def dense(self, x, n_input_neurons, n_output_neurons, activation=tf.nn.relu, name_scope="Dense_1"):
+    def dense(self, x, n_input_neurons, n_output_neurons, activation=tf.nn.relu, name_scope="Dense_1", trainable=True):
         with tf.name_scope(name_scope):
             w = tf.Variable(tf.truncated_normal(shape=(n_input_neurons, n_output_neurons),
                                                 mean=0, stddev=0.1, seed=2018),
-                            name="Weight")
-            b = tf.Variable(tf.constant(0.1, shape=[n_output_neurons]), name="Bias")
+                            name="Weight", trainable=trainable)
+            b = tf.Variable(tf.constant(0.1, shape=[n_output_neurons]), name="Bias", trainable=trainable)
             hidden_output = tf.add(tf.matmul(x, w), b)
             if activation == tf.nn.softmax:
                 activation_output = tf.nn.softmax(logits=hidden_output)
@@ -159,7 +164,7 @@ class CNN(object):
     def fit(self, n_epochs=50000, batch_size=64, verbose=1, keep_prob=0.5):
         merge = tf.summary.merge_all()
         init = tf.global_variables_initializer()
-
+        saver = tf.train.Saver()
         with tf.Session() as sess:
             train_file_writer = tf.summary.FileWriter(logdir="../Results/tensorboard/%s" % self.save_folder + "_train",
                                                       graph=sess.graph)
@@ -176,7 +181,7 @@ class CNN(object):
                 sess.run(self.optimizer,
                          feed_dict={self.x: train_batch_xs, self.y: train_batch_ys, self.keep_prob: keep_prob,
                                     self.phase_train: True})
-                if (i + 1) % 1 == 0:
+                if (i + 1) % 50 == 0:
                     summaries = sess.run(merge, feed_dict={self.x: train_batch_xs, self.y: train_batch_ys,
                                                            self.keep_prob: keep_prob, self.phase_train: True})
                     train_file_writer.add_summary(summaries, i)
@@ -198,6 +203,29 @@ class CNN(object):
                             "Validation "
                             "Loss: %.4f" % (
                                 i + 1, 100.0 * train_accuracy, train_loss, 100.0 * test_accuracy, test_loss))
+                    save_image(sess.run(self.convolution_weights["Conv_1"]))
+                    chkpt_path = "../Results/CNN_iter_%4d.ckpt" % (i + 1)
+                    saver.save(sess, chkpt_path)
+
+    def restore(self, path="../Results/CNN_iter_10000.ckpt"):
+        saver = tf.train.Saver()
+        with tf.Session() as sess:
+            saver.restore(sess, path)
+            mnist = load_data()
+            test_batch_xs, test_batch_ys = mnist.validation.next_batch(10000)
+            keep_prob = 0.5
+            for test_batch_x, test_batch_y in zip(test_batch_xs, test_batch_ys):
+                if test_batch_y[5] == 1:
+                    test_batch_x = np.reshape(test_batch_x, newshape=(1, 784))
+                    test_batch_y = np.reshape(test_batch_y, newshape=(1, 10))
+                    conv_1_output, conv_2_output = sess.run(
+                        [self.convolution_layers["Conv_1"], self.convolution_layers["Conv_2"]],
+                        feed_dict={self.x: test_batch_x, self.y: test_batch_y,
+                                   self.keep_prob: keep_prob,
+                                   self.phase_train: False})
+                    save_image(conv_1_output, path="../Results/conv1_images/", filename="Conv_1")
+                    save_image(conv_2_output, path="../Results/conv2_images/", filename="Conv_2")
+                    break
 
 
 def load_data():
@@ -206,10 +234,28 @@ def load_data():
     return mnist
 
 
+def save_image(output, path="../Results/filter_images/", filename="filter"):
+    os.makedirs(path, exist_ok=True)
+    if filename is "filter":
+        output = np.reshape(output, newshape=(64, 5, 5))
+        for i in range(64):
+            # Rescale to 0-255 and convert to uint8
+            rescaled = (255.0 / output[i, :, :].max() * (output[i, :, :] - output[i, :, :].min())).astype(np.uint8)
+            scipy.misc.imsave(path + "filter_" + str(i + 1) + ".png", rescaled)
+    else:
+        convolution = np.reshape(output, newshape=(output.shape[3], output.shape[1], output.shape[2]))
+        for i in range(64):
+            # Rescale to 0-255 and convert to uint8
+            rescaled = (255.0 / convolution[i, :, :].max() * (
+                    convolution[i, :, :] - convolution[i, :, :].min())).astype(np.uint8)
+            scipy.misc.imsave(path + filename + "_" + str(i + 1) + ".png", rescaled)
+
+
 if __name__ == '__main__':
     filters = [64, 64]
     filter_windows = [(5, 5), (5, 5)]
     pooling_shapes = [(2, 2), (2, 2)]
     model = CNN(filters=filters, filter_windows=filter_windows, pooling_shapes=pooling_shapes, n_outputs=10,
                 save_folder="CNN")
-    model.fit(n_epochs=50000, batch_size=64, verbose=1)
+    model.restore()
+    # model.fit(n_epochs=10000, batch_size=64, verbose=1)
