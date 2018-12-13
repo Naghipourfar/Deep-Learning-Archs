@@ -1,2 +1,3 @@
 # Deep-Learning-Course
-Learning Deep Learning and Types of Neural Networks
+Deep Learning Course Fall 2018, Sharif University of Technology, Tehran, Iran.
+
