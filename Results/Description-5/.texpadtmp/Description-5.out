@@ -1,0 +1,22 @@
+\BOOKMARK [1][-]{section.1}{Regularization}{}% 1
+\BOOKMARK [2][-]{subsection.1.1}{BatchNormalization}{section.1}% 2
+\BOOKMARK [3][-]{subsubsection.1.1.1}{تاثیر اضافه کردن BatchNormalization}{subsection.1.1}% 3
+\BOOKMARK [3][-]{subsubsection.1.1.2}{تعداد پارامتر های افزوده شده}{subsection.1.1}% 4
+\BOOKMARK [3][-]{subsubsection.1.1.3}{پیاده سازی تابع این لایه}{subsection.1.1}% 5
+\BOOKMARK [2][-]{subsection.1.2}{Dropout}{section.1}% 6
+\BOOKMARK [3][-]{subsubsection.1.2.1}{تاثیر اضافه کردن Dropout}{subsection.1.2}% 7
+\BOOKMARK [3][-]{subsubsection.1.2.2}{فرق در آموزش و تست}{subsection.1.2}% 8
+\BOOKMARK [3][-]{subsubsection.1.2.3}{پیاده سازی تابع این لایه}{subsection.1.2}% 9
+\BOOKMARK [1][-]{section.2}{Google\040Colab}{}% 10
+\BOOKMARK [2][-]{subsection.2.1}{گزارش نتیجه و مراحل اجرا در این محیط}{section.2}% 11
+\BOOKMARK [2][-]{subsection.2.2}{مقایسه در حالت وجود یا عدم وجود منظم ساز‌ها}{section.2}% 12
+\BOOKMARK [2][-]{subsection.2.3}{گزارش نتیجه در اثر وجود دو منظم ساز}{section.2}% 13
+\BOOKMARK [1][-]{section.3}{Visualization}{}% 14
+\BOOKMARK [2][-]{subsection.3.1}{توضیح در مورد شبکه VGG}{section.3}% 15
+\BOOKMARK [2][-]{subsection.3.2}{توضیح معماری شبکه VGG}{section.3}% 16
+\BOOKMARK [2][-]{subsection.3.3}{گزارش فیلتر‌های هر لایه و مقایسه اولین و آخرین فیلتر}{section.3}% 17
+\BOOKMARK [2][-]{subsection.3.4}{تحلیل نتایج لایه‌های ۳ و ۱۳ حاصل از ورودی های جدید شبکه}{section.3}% 18
+\BOOKMARK [1][-]{section.4}{DeConvolution}{}% 19
+\BOOKMARK [2][-]{subsection.4.1}{رسم شبکه عصبی و مشخصات هر لایه}{section.4}% 20
+\BOOKMARK [2][-]{subsection.4.2}{کاربر در شبکه های عمیق}{section.4}% 21
+\BOOKMARK [2][-]{subsection.4.3}{نحوه عملکر این لایه و تفاوت با لایه Convolution}{section.4}% 22
