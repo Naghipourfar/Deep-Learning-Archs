@@ -2,8 +2,9 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-from keras.applications.vgg16 import VGG16
+from keras.applications.vgg16 import VGG16, preprocess_input
 from keras.utils.vis_utils import plot_model
+from keras_preprocessing.image import load_img, img_to_array
 
 """
     Created by Mohsen Naghipourfar on 2018-12-15.
@@ -25,7 +26,8 @@ if __name__ == '__main__':
     layer_dict = dict([(layer.name, layer) for layer in model.layers])
     plt.close("all")
     for layer_name, layer in layer_dict.items():
-        if layer_name == "input_1" or layer_name.endswith("_pool"):
+        if layer_name == "input_1" or layer_name.endswith("_pool") or layer_name.startswith(
+                "f") or layer_name.startswith("predictions"):
             continue
         else:
             print(layer_name)
@@ -44,17 +46,19 @@ if __name__ == '__main__':
                     axes[i].axis('off')
                 fig.subplots_adjust(right=0.8)
                 cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
-                fig.colorbar(im, cax=cbar_ax)
-                plt.axis('off')
+                cbar = fig.colorbar(im, cax=cbar_ax)
+                # cbar.set_ticks([0.0, 0.5, 1.0])
+                # cbar.set_ticklabels([0.0, 0.5, 1.0])
+                # plt.axis('off')
                 plt.savefig("../Results/Description-5/filters/%s/%s_filter_%d.pdf" % (layer_name, layer_name, c))
                 plt.close()
 
     # -----------------------------------------------------------------
     # Part C:
-    # path = "../Results/Images/"
-    # image_filenames = os.listdir(path)
-    # for image_filename in image_filenames:
-    #     image = load_img(path + image_filename, target_size=(224, 224))
-    #     image = img_to_array(image)
-    #     image = image.reshape((1, image.shape[0], image.shape[1], image.shape[2]))
-    #     image = preprocess_input(image)
+    path = "../Results/Images/"
+    image_filenames = os.listdir(path)
+    for image_filename in image_filenames:
+        image = load_img(path + image_filename, target_size=(224, 224))
+        image = img_to_array(image)
+        image = image.reshape((1, image.shape[0], image.shape[1], image.shape[2]))
+        image = preprocess_input(image)
