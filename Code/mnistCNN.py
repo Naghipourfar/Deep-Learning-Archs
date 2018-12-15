@@ -136,7 +136,7 @@ class CNN(object):
         elif task_num == 3:
             output = self.create_CNN_with_dropout()
         else:
-            output = self.create_CNN_with_regularization()
+            output = self.create_CNN_with_BN_and_dropout()
         self.variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="input")
         self.variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="Conv_1")
         self.variables += tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="MaxPooling_1")
@@ -234,7 +234,7 @@ class CNN(object):
         output_layer = tf.nn.softmax(output_layer)
         return output_layer
 
-    def create_CNN_with_regularization(self):
+    def create_CNN_with_BN_and_dropout(self):
         max_pool = tf.reshape(self.x, shape=(-1, 28, 28, 1), name="input")
         for i in range(len(self.filters)):
             convolution = self.convolution_layer(max_pool,
