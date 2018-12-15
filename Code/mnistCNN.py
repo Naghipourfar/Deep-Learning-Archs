@@ -3,6 +3,7 @@ import os
 import numpy as np
 import scipy
 import tensorflow as tf
+from tensorflow.python.ops import array_ops
 
 """
     Created by Mohsen Naghipourfar on 11/22/18.
@@ -19,6 +20,72 @@ def max_pooling(x, pooling_shape=(2, 2), name_scope="MaxPooling_1"):
         strides = [1, pooling_shape[0], pooling_shape[1], 1]
         output = tf.nn.max_pool(x, kernel_size, strides, padding="VALID")
         return output
+
+
+def batch_normalization_from_scratch_conv(x, n_out, training_phase, name_scope="BatchNormalization"):
+    epsilon = 1e-7
+    with tf.name_scope(name_scope):
+        # n_out is number of filters for conv
+        gamma = tf.Variable(tf.constant(1.0, shape=[n_out]), trainable=True, name="Gamma")
+        beta = tf.Variable(tf.constant(0.0, shape=[n_out]), trainable=True, name="Beta")
+
+        ema = tf.train.ExponentialMovingAverage(decay=0.5)
+
+        def calculate_moments_for_conv():  # calculate mean, var for conv layer
+            batch_mean = tf.reduce_mean(x, axis=[0, 1, 2], keep_dims=True)
+            batch_mean = array_ops.squeeze(batch_mean, [0, 1, 2])
+            m = tf.reduce_mean(x, axis=[0, 1, 2], keep_dims=True)
+            squared_diffs = tf.square(x - m)
+            batch_var = tf.reduce_mean(squared_diffs, axis=[0, 1, 2], keep_dims=True)
+            batch_var = array_ops.squeeze(batch_var, [0, 1, 2])
+            return batch_mean, batch_var
+
+        batch_mean, batch_var = calculate_moments_for_conv()
+
+        def mean_var_with_update_at_train_time():  # Track & save the mean and variance for test time
+            ema_apply_op = ema.apply([batch_mean, batch_var])
+            with tf.control_dependencies([ema_apply_op]):
+                return tf.identity(batch_mean), tf.identity(batch_var)
+
+        mean, var = tf.cond(training_phase,  # calculate mean, var for train/test time
+                            mean_var_with_update_at_train_time,
+                            lambda: (ema.average(batch_mean), ema.average(batch_var)))
+
+        denominator = tf.rsqrt(var + epsilon)  # NOTE: rsqrt -> 1 / sqrt()
+        normed = gamma * (x - mean) * denominator + beta
+    return normed
+
+
+def batch_normalization_from_scratch_dense(x, n_out, training_phase, name_scope="BatchNormalization"):
+    epsilon = 1e-7
+    with tf.name_scope(name_scope):
+        # n_out is number of nodes in fully connected layer
+        gamma = tf.Variable(tf.constant(1.0, shape=[n_out]), trainable=True, name="Gamma")
+        beta = tf.Variable(tf.constant(0.0, shape=[n_out]), trainable=True, name="Beta")
+
+        ema = tf.train.ExponentialMovingAverage(decay=0.5)
+
+        def calculate_moments_for_dense():  # calculate mean, var for fully connected layer
+            batch_mean = tf.reduce_mean(x, axis=[0], keep_dims=True)
+            m = tf.reduce_mean(x, axis=[0], keep_dims=True)
+            devs_squared = tf.square(x - m)
+            batch_var = tf.reduce_mean(devs_squared, axis=[0], keep_dims=True)
+            return batch_mean, batch_var
+
+        batch_mean, batch_var = calculate_moments_for_dense()
+
+        def mean_var_with_update_at_train_time():  # Track & save the mean and variance for test time
+            ema_apply_op = ema.apply([batch_mean, batch_var])
+            with tf.control_dependencies([ema_apply_op]):
+                return tf.identity(batch_mean), tf.identity(batch_var)
+
+        mean, var = tf.cond(training_phase,  # calculate mean, var for train/test time
+                            mean_var_with_update_at_train_time,
+                            lambda: (ema.average(batch_mean), ema.average(batch_var)))
+
+        denominator = tf.rsqrt(var + epsilon)  # NOTE: rsqrt -> 1 / sqrt()
+        normed = gamma * (x - mean) * denominator + beta
+    return normed
 
 
 def batch_normalization(x, n_out, phase_train):
@@ -64,7 +131,7 @@ class CNN(object):
         self.task_num = task_num
         if task_num == 1:
             output = self.create_CNN()
-        if task_num == 2:
+        elif task_num == 2:
             output = self.create_CNN()
         elif task_num == 3:
             output = self.create_CNN()
@@ -94,7 +161,9 @@ class CNN(object):
                                                  stride=1,
                                                  n_input_channels=max_pool.get_shape().as_list()[3],
                                                  name_scope="Conv_%d" % (i + 1))
-            convolution = batch_normalization(convolution, self.filters[i], self.phase_train)
+            print(convolution.get_shape().as_list())
+            convolution = batch_normalization_from_scratch_conv(convolution, self.filters[i], self.phase_train)
+            # print(convolution.get_shape().as_list())
             convolution = tf.nn.relu(convolution)
             self.convolution_layers["Conv_%d" % (i + 1)] = convolution
             max_pool = max_pooling(convolution,
@@ -105,11 +174,11 @@ class CNN(object):
             n_flatten_neurons *= i
         flatten = tf.reshape(max_pool, [-1, n_flatten_neurons])
 
-        fully_connected_layer = self.dense(flatten, flatten.get_shape().as_list()[1], 256, activation=tf.nn.relu,
-                                           name_scope="Dense_1")
+        fully_connected_layer = self.dense(flatten, flatten.get_shape().as_list()[1], 256, name_scope="Dense_1")
+        fully_connected_layer = batch_normalization_from_scratch_dense(fully_connected_layer, 256, self.phase_train)
+        fully_connected_layer = tf.nn.relu(fully_connected_layer)
         fully_connected_layer = tf.nn.dropout(fully_connected_layer, 0.5)
-        output_layer = self.dense(fully_connected_layer, 256, 10, activation=tf.nn.softmax,
-                                  name_scope="Output_Layer")
+        output_layer = self.dense(fully_connected_layer, 256, 10, name_scope="Output_Layer")
         return output_layer
 
     def create_CNN_v2(self):
@@ -121,7 +190,7 @@ class CNN(object):
                                                  stride=1,
                                                  n_input_channels=max_pool.get_shape().as_list()[3],
                                                  name_scope="Conv_%d" % (i + 1), trainable=False)
-            convolution = batch_normalization(convolution, self.filters[i], self.phase_train)
+            convolution = batch_normalization_from_scratch_conv(convolution, self.filters[i], self.phase_train)
             convolution = tf.nn.relu(convolution)
             self.convolution_layers["Conv_%d" % (i + 1)] = convolution
             max_pool = max_pooling(convolution,
@@ -132,11 +201,11 @@ class CNN(object):
             n_flatten_neurons *= i
         flatten = tf.reshape(max_pool, [-1, n_flatten_neurons])
 
-        fully_connected_layer = self.dense(flatten, flatten.get_shape().as_list()[1], 256, activation=tf.nn.relu,
-                                           name_scope="Dense_1", trainable=False)
+        fully_connected_layer = self.dense(flatten, flatten.get_shape().as_list()[1], 256, name_scope="Dense_1", trainable=False)
+        fully_connected_layer = batch_normalization_from_scratch_dense(fully_connected_layer, 256, self.phase_train)
+        fully_connected_layer = tf.nn.relu(fully_connected_layer)
         fully_connected_layer = tf.nn.dropout(fully_connected_layer, 0.5)
-        output_layer = self.dense(fully_connected_layer, 256, 2, activation=tf.nn.softmax,
-                                  name_scope="Output_Layer")
+        output_layer = self.dense(fully_connected_layer, 256, 2, name_scope="Output_Layer")
         return output_layer
 
     def convolution_layer(self, x, filters=64, filter_window=(5, 5), stride=1, n_input_channels=1,
@@ -178,20 +247,16 @@ class CNN(object):
         tf.summary.scalar("Cross_Entropy", self.cross_entropy)
         tf.summary.scalar("accuracy", self.accuracy)
 
-    def dense(self, x, n_input_neurons, n_output_neurons, activation=tf.nn.relu, name_scope="Dense_1", trainable=True):
+    def dense(self, x, n_input_neurons, n_output_neurons, name_scope="Dense_1", trainable=True):
         with tf.name_scope(name_scope):
             w = tf.Variable(tf.truncated_normal(shape=(n_input_neurons, n_output_neurons),
                                                 mean=0, stddev=0.1, seed=2018),
                             name="Weight", trainable=trainable)
             b = tf.Variable(tf.constant(0.1, shape=[n_output_neurons]), name="Bias", trainable=trainable)
             hidden_output = tf.add(tf.matmul(x, w), b)
-            if activation == tf.nn.softmax:
-                activation_output = tf.nn.softmax(logits=hidden_output)
-            else:
-                activation_output = activation(hidden_output)
             tf.summary.histogram("Weights", w)
 
-            return activation_output
+            return hidden_output
 
     def fit(self, n_epochs=50000, batch_size=64, verbose=1, keep_prob=0.5):
         merge = tf.summary.merge_all()
@@ -354,17 +419,17 @@ if __name__ == '__main__':
     pooling_shapes = [(2, 2), (2, 2)]
     model = CNN(filters=filters, filter_windows=filter_windows, pooling_shapes=pooling_shapes, n_outputs=10,
                 save_folder="CNN", task_num=1)
-    model.fit(n_epochs=10000, batch_size=64, verbose=1)
-
-    model = CNN(filters=filters, filter_windows=filter_windows, pooling_shapes=pooling_shapes, n_outputs=10,
-                save_folder="CNN", task_num=2)
-    model.restore()
-
-    model = CNN(filters=filters, filter_windows=filter_windows, pooling_shapes=pooling_shapes, n_outputs=10,
-                save_folder="CNN", task_num=3)
-    model.restore()
-
-    model = CNN(filters=filters, filter_windows=filter_windows, pooling_shapes=pooling_shapes, n_outputs=2,
-                save_folder="CNN", task_num=3)
-    model.restore()
-    model.fit(n_epochs=10000, batch_size=64, verbose=1)
+    # model.fit(n_epochs=10000, batch_size=64, verbose=1)
+    #
+    # model = CNN(filters=filters, filter_windows=filter_windows, pooling_shapes=pooling_shapes, n_outputs=10,
+    #             save_folder="CNN", task_num=2)
+    # model.restore()
+    #
+    # model = CNN(filters=filters, filter_windows=filter_windows, pooling_shapes=pooling_shapes, n_outputs=10,
+    #             save_folder="CNN", task_num=3)
+    # model.restore()
+    #
+    # model = CNN(filters=filters, filter_windows=filter_windows, pooling_shapes=pooling_shapes, n_outputs=2,
+    #             save_folder="CNN", task_num=3)
+    # model.restore()
+    # model.fit(n_epochs=10000, batch_size=64, verbose=1)
