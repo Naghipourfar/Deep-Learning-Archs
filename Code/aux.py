@@ -27,4 +27,6 @@ def create_model_v2():
 
 
 if __name__ == '__main__':
-    create_model_v2()
+    from google.colab import files
+
+    files.download('your typical h5 file or what ever.h5')

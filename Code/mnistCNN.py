@@ -130,13 +130,13 @@ class CNN(object):
         self.convolution_layers = {}
         self.task_num = task_num
         if task_num == 1:
-            output = self.create_CNN()
+            output = self.create_CNN_without_regularization()
         elif task_num == 2:
-            output = self.create_CNN()
+            output = self.create_CNN_with_BN()
         elif task_num == 3:
-            output = self.create_CNN()
+            output = self.create_CNN_with_dropout()
         else:
-            output = self.create_CNN_v2()
+            output = self.create_CNN_with_regularization()
         self.variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="input")
         self.variables = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="Conv_1")
         self.variables += tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="MaxPooling_1")
@@ -145,14 +145,14 @@ class CNN(object):
         self.variables += tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="Dense_1")
         self.compile(output)
         self.save_folder = save_folder
-        if os.path.exists("../Results/tensorboard/" + save_folder + "_train_" + str(task_num)):
+        if os.path.exists("../Results/tensorboard/" + save_folder + "_train"):
             import shutil
-            shutil.rmtree("../Results/tensorboard/" + save_folder + "_train_" + str(task_num))
-            shutil.rmtree("../Results/tensorboard/" + save_folder + "_test_" + str(task_num))
-        os.makedirs("../Results/tensorboard/" + save_folder + "_train_" + str(task_num), exist_ok=True)
-        os.makedirs("../Results/tensorboard/" + save_folder + "_test_" + str(task_num), exist_ok=True)
+            shutil.rmtree("../Results/tensorboard/" + save_folder + "_train")
+            shutil.rmtree("../Results/tensorboard/" + save_folder + "_test")
+        os.makedirs("../Results/tensorboard/" + save_folder + "_train", exist_ok=True)
+        os.makedirs("../Results/tensorboard/" + save_folder + "_test", exist_ok=True)
 
-    def create_CNN(self):
+    def create_CNN_without_regularization(self):
         max_pool = tf.reshape(self.x, shape=(-1, 28, 28, 1), name="input")
         for i in range(len(self.filters)):
             convolution = self.convolution_layer(max_pool,
@@ -161,9 +161,6 @@ class CNN(object):
                                                  stride=1,
                                                  n_input_channels=max_pool.get_shape().as_list()[3],
                                                  name_scope="Conv_%d" % (i + 1))
-            print(convolution.get_shape().as_list())
-            convolution = batch_normalization_from_scratch_conv(convolution, self.filters[i], self.phase_train)
-            # print(convolution.get_shape().as_list())
             convolution = tf.nn.relu(convolution)
             self.convolution_layers["Conv_%d" % (i + 1)] = convolution
             max_pool = max_pooling(convolution,
@@ -173,15 +170,13 @@ class CNN(object):
         for i in max_pool.get_shape().as_list()[1:]:
             n_flatten_neurons *= i
         flatten = tf.reshape(max_pool, [-1, n_flatten_neurons])
-
         fully_connected_layer = self.dense(flatten, flatten.get_shape().as_list()[1], 256, name_scope="Dense_1")
-        fully_connected_layer = batch_normalization_from_scratch_dense(fully_connected_layer, 256, self.phase_train)
         fully_connected_layer = tf.nn.relu(fully_connected_layer)
-        fully_connected_layer = tf.nn.dropout(fully_connected_layer, 0.5)
         output_layer = self.dense(fully_connected_layer, 256, 10, name_scope="Output_Layer")
+        output_layer = tf.nn.softmax(output_layer)
         return output_layer
 
-    def create_CNN_v2(self):
+    def create_CNN_with_BN(self):
         max_pool = tf.reshape(self.x, shape=(-1, 28, 28, 1), name="input")
         for i in range(len(self.filters)):
             convolution = self.convolution_layer(max_pool,
@@ -190,7 +185,8 @@ class CNN(object):
                                                  stride=1,
                                                  n_input_channels=max_pool.get_shape().as_list()[3],
                                                  name_scope="Conv_%d" % (i + 1), trainable=False)
-            convolution = batch_normalization_from_scratch_conv(convolution, self.filters[i], self.phase_train)
+            # convolution = batch_normalization(convolution, self.filters[i], self.phase_train)
+            convolution = tf.layers.batch_normalization(convolution)
             convolution = tf.nn.relu(convolution)
             self.convolution_layers["Conv_%d" % (i + 1)] = convolution
             max_pool = max_pooling(convolution,
@@ -201,11 +197,73 @@ class CNN(object):
             n_flatten_neurons *= i
         flatten = tf.reshape(max_pool, [-1, n_flatten_neurons])
 
-        fully_connected_layer = self.dense(flatten, flatten.get_shape().as_list()[1], 256, name_scope="Dense_1", trainable=False)
-        fully_connected_layer = batch_normalization_from_scratch_dense(fully_connected_layer, 256, self.phase_train)
+        fully_connected_layer = self.dense(flatten, flatten.get_shape().as_list()[1], 256, name_scope="Dense_1",
+                                           trainable=False)
+        # fully_connected_layer = batch_normalization_from_scratch_dense(fully_connected_layer, 256, self.phase_train)
+        fully_connected_layer = tf.layers.batch_normalization(fully_connected_layer)
+        fully_connected_layer = tf.nn.relu(fully_connected_layer)
+        output_layer = self.dense(fully_connected_layer, 256, 10, name_scope="Output_Layer")
+        output_layer = tf.nn.softmax(output_layer)
+        return output_layer
+
+    def create_CNN_with_dropout(self):
+        max_pool = tf.reshape(self.x, shape=(-1, 28, 28, 1), name="input")
+        for i in range(len(self.filters)):
+            convolution = self.convolution_layer(max_pool,
+                                                 filters=self.filters[i],
+                                                 filter_window=self.filter_windows[i],
+                                                 stride=1,
+                                                 n_input_channels=max_pool.get_shape().as_list()[3],
+                                                 name_scope="Conv_%d" % (i + 1), trainable=False)
+            convolution = tf.nn.relu(convolution)
+            convolution = tf.nn.dropout(convolution)
+            self.convolution_layers["Conv_%d" % (i + 1)] = convolution
+            max_pool = max_pooling(convolution,
+                                   pooling_shape=self.pooling_shapes[i],
+                                   name_scope="MaxPooling_%d" % (i + 1))
+        n_flatten_neurons = 1
+        for i in max_pool.get_shape().as_list()[1:]:
+            n_flatten_neurons *= i
+        flatten = tf.reshape(max_pool, [-1, n_flatten_neurons])
+
+        fully_connected_layer = self.dense(flatten, flatten.get_shape().as_list()[1], 256, name_scope="Dense_1",
+                                           trainable=False)
         fully_connected_layer = tf.nn.relu(fully_connected_layer)
         fully_connected_layer = tf.nn.dropout(fully_connected_layer, 0.5)
-        output_layer = self.dense(fully_connected_layer, 256, 2, name_scope="Output_Layer")
+        output_layer = self.dense(fully_connected_layer, 256, 10, name_scope="Output_Layer")
+        output_layer = tf.nn.softmax(output_layer)
+        return output_layer
+
+    def create_CNN_with_regularization(self):
+        max_pool = tf.reshape(self.x, shape=(-1, 28, 28, 1), name="input")
+        for i in range(len(self.filters)):
+            convolution = self.convolution_layer(max_pool,
+                                                 filters=self.filters[i],
+                                                 filter_window=self.filter_windows[i],
+                                                 stride=1,
+                                                 n_input_channels=max_pool.get_shape().as_list()[3],
+                                                 name_scope="Conv_%d" % (i + 1), trainable=False)
+            # convolution = batch_normalization_from_scratch_conv(convolution, self.filters[i], self.phase_train)
+            convolution = tf.layers.batch_normalization(convolution)
+            convolution = tf.nn.relu(convolution)
+            convolution = tf.nn.dropout(convolution, 0.5)
+            self.convolution_layers["Conv_%d" % (i + 1)] = convolution
+            max_pool = max_pooling(convolution,
+                                   pooling_shape=self.pooling_shapes[i],
+                                   name_scope="MaxPooling_%d" % (i + 1))
+        n_flatten_neurons = 1
+        for i in max_pool.get_shape().as_list()[1:]:
+            n_flatten_neurons *= i
+        flatten = tf.reshape(max_pool, [-1, n_flatten_neurons])
+
+        fully_connected_layer = self.dense(flatten, flatten.get_shape().as_list()[1], 256, name_scope="Dense_1",
+                                           trainable=False)
+        # fully_connected_layer = batch_normalization_from_scratch_dense(fully_connected_layer, 256, self.phase_train)
+        fully_connected_layer = tf.layers.batch_normalization(fully_connected_layer)
+        fully_connected_layer = tf.nn.relu(fully_connected_layer)
+        fully_connected_layer = tf.nn.dropout(fully_connected_layer, 0.5)
+        output_layer = self.dense(fully_connected_layer, 256, 10, name_scope="Output_Layer")
+        output_layer = tf.nn.softmax(output_layer)
         return output_layer
 
     def convolution_layer(self, x, filters=64, filter_window=(5, 5), stride=1, n_input_channels=1,
@@ -275,54 +333,7 @@ class CNN(object):
             sess.run(tf.global_variables_initializer())
             mnist = load_data()
             test_batch_xs, test_batch_ys = mnist.validation.next_batch(10000)
-            train_batch_xs, train_batch_ys = mnist.validation.next_batch(40000)
-            if self.task_num == 4:
-                indices = []
-                for idx, test_batch_y in enumerate(test_batch_ys):
-                    if test_batch_y[1] == 1 or test_batch_y[4] == 1:
-                        indices.append(idx)
-                test_batch_xs = test_batch_xs[indices]
-                test_batch_ys = test_batch_ys[indices]
-                test_batch_ys = test_batch_ys[:, [1, 4]]
 
-                indices = []
-                for idx, train_batch_y in enumerate(train_batch_ys):
-                    if train_batch_y[1] == 1 or train_batch_y[4] == 1:
-                        indices.append(idx)
-                train_batch_xs = train_batch_xs[indices]
-                train_batch_ys = train_batch_ys[indices]
-                train_batch_ys = train_batch_ys[:, [1, 4]]
-
-                for i in range(n_epochs):
-                    sess.run(self.optimizer,
-                             feed_dict={self.x: train_batch_xs, self.y: train_batch_ys, self.keep_prob: keep_prob,
-                                        self.phase_train: True})
-                    if (i + 1) % 50 == 0:
-                        summaries = sess.run(merge, feed_dict={self.x: train_batch_xs, self.y: train_batch_ys,
-                                                               self.keep_prob: keep_prob, self.phase_train: True})
-                        train_file_writer.add_summary(summaries, i)
-
-                        summaries = sess.run(merge, feed_dict={self.x: test_batch_xs, self.y: test_batch_ys,
-                                                               self.keep_prob: keep_prob, self.phase_train: False})
-                        test_file_writer.add_summary(summaries, i)
-
-                        train_accuracy, train_loss = sess.run((self.accuracy, self.cross_entropy),
-                                                              feed_dict={self.x: train_batch_xs, self.y: train_batch_ys,
-                                                                         self.keep_prob: keep_prob,
-                                                                         self.phase_train: True})
-
-                        test_accuracy, test_loss = sess.run([self.accuracy, self.cross_entropy],
-                                                            feed_dict={self.x: test_batch_xs, self.y: test_batch_ys,
-                                                                       self.keep_prob: keep_prob,
-                                                                       self.phase_train: False})
-                        if verbose == 1:
-                            print(
-                                "Epoch: %5i\t Train Accuracy: %.4f %%\t Train Loss: %.4f\t Validation Accuracy: %.4f %%\t "
-                                "Validation "
-                                "Loss: %.4f" % (
-                                    i + 1, 100.0 * train_accuracy, train_loss, 100.0 * test_accuracy, test_loss))
-                        # save_image(sess.run(self.convolution_weights["Conv_1"]))
-                return
             for i in range(n_epochs):
                 train_batch_xs, train_batch_ys = mnist.train.next_batch(batch_size)
                 sess.run(self.optimizer,
@@ -384,7 +395,6 @@ class CNN(object):
                 save_image(test_batch_x, path="../Results/", filename="5.png")
                 save_image(conv_1_output, path="../Results/conv1_images/", filename="Conv_1")
                 save_image(conv_2_output, path="../Results/conv2_images/", filename="Conv_2")
-                break
 
 
 def load_data():
@@ -411,7 +421,6 @@ def save_image(output, path="../Results/filter_images/", filename="filter"):
     else:
         rescaled = (255.0 / output.max() * (output - output.min())).astype(np.uint8)
         scipy.misc.imsave(path + filename + ".png", rescaled)
-
 
 if __name__ == '__main__':
     filters = [64, 64]

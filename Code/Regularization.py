@@ -1,5 +1,7 @@
+import numpy as np
 import tensorflow as tf
 from tensorflow.python.ops import array_ops
+
 """
     Created by Mohsen Naghipourfar on 2018-12-15.
     Email : mn7697np@gmail.com or naghipourfar@ce.sharif.edu
@@ -74,7 +76,11 @@ def batch_normalization_from_scratch_dense(x, n_out, training_phase, name_scope=
         normed = gamma * (x - mean) * denominator + beta
     return normed
 
-def dropout(keep_prob):
-    pass
 
-
+def dropout_dense(x, keep_prob, training_phase):
+    with tf.name_scope("Dropout"):
+        input_shape = x.get_shape().as_list()
+        m = tf.cond(training_phase,
+                    lambda: np.random.binomial(1, keep_prob, size=input_shape),
+                    lambda: tf.constant(keep_prob, shape=input_shape))
+        tf.multiply(x, m)
