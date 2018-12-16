@@ -48,6 +48,16 @@
 در اثر اضافه کردن لایه \lr{BatchNormalization} به هر لایه، به ازای هر نورون آن لایه، دو پارامتر \lr{$\gamma$}و \lr{$\beta$} اضافه می‌شود که قابل یادگیری هستند.
 \subsubsection{پیاده سازی تابع این لایه}
 عکس‌های زیر، پیاده سازی لایه \lr{BatchNormalization} می‌باشند. همانطور که از اسم آنها نیز پیداست، عکس اول مربوط به پیاده‌سازی این لایه برای بعد از لایه \lr{Convolution} است و عکس دوم مربوط به پیاده‌سازی این لایه بعد از یک لایه \lr{Fully Connected} می‌باشد.
+\begin{figure}[H]
+	\centerline{\includegraphics[width=13cm, height=9cm]{BN_conv}}
+	\caption{پیاده سازی لایه \lr{BN} برای لایه کانوولوشنی
+}
+\end{figure}
+\begin{figure}[H]
+	\centerline{\includegraphics[width=13cm, height=9cm]{BN_dense}}
+	\caption{پیاده سازی لایه \lr{BN} برای لایه \lr{FullyConnected}
+}
+\end{figure}
 \subsection{\lr{Dropout}}
 \subsubsection{تاثیر اضافه کردن \lr{Dropout}}
 اضافه کردن این منظم‌ساز به هر لایه، تاثیرات زیر را همراه خود می‌آورد:
@@ -60,16 +70,81 @@
 \end{itemize} 
 \subsubsection{فرق در آموزش و تست}
 در هنگام آموزش، ما از یک توزیع \lr{Binomial} با احتمال موفقیت \lr{P}استفاده می‌کنیم و نورون‌های لایه‌ای که این منظم‌ساز روی آن اعمال شده است را به طور کامل حذف می‌کنیم. در واقع هر نورون با احتمال \lr{P} در شبکه حضور دارد و یک سری از نورون‌ها در فرآیند یادگیری حذف می‌شوند. اما در فرآیند تست، همه نورون‌ها در شبکه به طور قطع حاضر هستند، اما وزن \lr{Connection}آنها در عدد \lr{P} ضرب می‌شود و به نوعی \lr{Expected} گیری انجام می‌دهیم برای خروجی هر نورون و تاثیرات آن روی نورون‌های لایه بعدی. یعنی، انتظار داریم که خروجی نورون که با احتمال \lr{P} از شبکه‌ در فرآیند یادگیری حذف می‌شد،‌خروجی آن به ازای وزن‌های \lr{Pw} باشد. شکل زیر که از مقاله خود جناب آقای \lr{Hinton} از مقاله \lr{Dropout} آمده است، فرق بین اعمال این منظم ساز در فرآیند تست و آموزش را به خوبی توضیح می‌دهد.
+\begin{figure}[H]
+	\centerline{\includegraphics[width=13cm, height=9cm]{dropoutpaper}}
+	\caption{فرق \lr{dropout} در تست و آموزش}
+\end{figure}
 \subsubsection{پیاده سازی تابع این لایه}
 در عکس زیر پیاده‌سازی مربوط به این منظم‌ساز روی ورودی خود آمده است.
+\begin{figure}[H]
+	\centerline{\includegraphics[width=13cm, height=9cm]{dropout}}
+	\caption{پیاده سازی لایه \lr{Dropout}
+}
+\end{figure}
+
 \section{\lr{Google Colab}}
 \subsection{گزارش نتیجه و مراحل اجرا در این محیط}
+ابتدا در گوگل \lr{sign in} می‌کنیم.
+ابتدا در این محیط فایل نوت‌بوکی با پایتون ۳ ایجاد می‌کنیم. سپس در گزینه \lr{Runtime}، عبارت \lr{Change Runtime Type} را انتخاب نموده و در پنجره باز شده \lr{Hardware Accelerator} را \lr{GPU} انتخاب می‌کنیم. حال شروع به کد زنی می‌کنیم. عکس مربوط به مرحله بیان شده در بالا، در زیر آمده است. در آخر بعد از اتمام کد زنی برای اجرای کل نوت‌بوک از تب \lr{Runtime} در بالا گزینه \lr{Run all} را انتخاب کرده تا همه سلول های کد اجرا شوند و فایل های \lr{Tensorboard} ایجاد و دانلود شوند. همچنین نتایج و عکس‌های مربوط به نتایج حاصل از اجرای کد در این نوت‌بوک، که در فایل ‌های \lr{Tensorboard} ذخیره شده بود دانلود شده و در کنار گزارش آمده است. همچنین عکس مربوط به نتایج آنها نیز در گزارش آمده است.همچنین فایل نوت‌بوک نوشته شده در محیط \lr{Google Colab} در ضمیمه کنار این گزارش به نام \lr{MNIST\_CNN} آمده است.همانطور که مشخص است، استفاده از یکی از منظم‌ساز های \lr{BN} و یا \lr{Dropout} نتیجه دقت شبکه را به طرز قابل توجهی نسبت به عدم استفاده از آنها افزایش می‌دهد.
+
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=6cm, height=8cm]{Colab-1}}
+	\caption{مراحل کار با \lr{Google Colab}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=6cm, height=8cm]{Colab-2}}
+	\caption{مراحل کار با \lr{Google Colab}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=15cm, height=10cm]{wor_loss}}
+	\caption{نتیجه تابع هزینه بدون استفاده از منظم ساز}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=15cm, height=10cm]{wor_acc}}
+	\caption{نتیجه دقت بدون استفاده از منظم ساز}
+\end{figure}
+
 \subsection{مقایسه در حالت وجود یا عدم وجود منظم ساز‌ها}
+عکس مربوط به مقایسه‌ها و نتایج در زیر آمده است.
+\begin{figure}[H]
+	\centerline{\includegraphics[width=15cm, height=10cm]{wb_loss}}
+	\caption{نتیحه تابع هزینه با استفاده از \lr{BN}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=15cm, height=10cm]{wb_acc}}
+	\caption{نتیحه دقت با استفاده از \lr{BN}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=15cm, height=10cm]{wd_loss}}
+	\caption{نتیحه تابع هزینه با استفاده از \lr{Dropout}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=15cm, height=10cm]{wd_acc}}
+	\caption{نتیحه دقت با استفاده از \lr{Dropout}}
+\end{figure}
+
 \subsection{گزارش نتیجه در اثر وجود دو منظم ساز}
+عکس مربوط به مقایسه‌ها و نتایج در زیر آمده است.همانطور که از شکل مشخص است، نتیجه دقت شبکه در صورت استفاده از هر دو منظم‌ساز، نسبت به استفاده از یکی از آنها و یا عدم استفاده از هیچ یک، بهتر شده و دقت شبکه کمی بالاتر رفته است.
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=15cm, height=10cm]{all_loss}}
+	\caption{نتیجه تابع هزینه با استفاده دو روش منظم‌سازی}
+\end{figure}
+\begin{figure}[H]
+	\centerline{\includegraphics[width=15cm, height=10cm]{all_acc}}
+	\caption{نتیجه دقت با استفاده دو روش منظم‌سازی}
+\end{figure}
 
 \section{\lr{Visualization}}
 \subsection{توضیح در مورد شبکه \lr{VGG}}
-این شبکه در سال ۲۰۱۴ در کنفرانس \lr{ICLR} معرفی شد. این شبکه دو نوع \lr{VGG16} و \lr{VGG19} دارد که به ترتیب از ۱۶ و ۱۹ لایه تشکیل شده‌اند. در این شبکه‌ها فیلتر های وزن در لایه‌های کانوولوشنی بسیار کوچک می‌باشند و در سایز ۳ در ۳ می‌باشند که طبق گفته مقاله این شبکه، این فیلتر‌ها باعث عمیق‌تر کردن شبکه و عین حال نتیجه بهتر نسبت به مدل‌های مشابه گرفتن‌، می‌باشند. در واقع وجود این فیلتر‌ها باعث شده تا تعداد لایه ‌های شبکه تا ۱۶ یا ۱۹ لایه پیش‌برود و دقت آن نیز نسبت به مدل‌های مشابه بهتر باشد. این شبکه  برنده مسابقه \lr{IMAGENET Challenge} در تسک \lr{Localization} در سال ۲۰۱۴ و برنده مقام دومی در تسک \lr{Classification} در همان سال می‌باشد. این مسابقه که هرساله برگزار می‌شود دارای دیتای بسیار معروفی به نام \lr{ILSVRC} باشد. این شبکه با بیشتر کردن عمق‌ خود با استفاده از فیکس کردن سایز فیلتر‌های وزن لایه‌های کانوولوشن و بسیار کوچک بودن سایز آن سعی در بهتر کردن دقت خود داشته است و در این زمینه نیز موفق بوده است. طبق گفته نویسندگان این مقاله، این شبکه نه تنها برای دیتای مسابقه \lr{ILSVRC} بسیار خوب عمل می‌کند بلکه روی دیتای مسابقه‌های دیگر نیز بسیار خود عمل کرده است. این شبکه علاوه بر دیتای \lr{ILSVRC} در مقاله‌ خود بر روی دیتاهای \lr{VOC-2012}،\lr{VOC-2007}، \lr{Caltech-101} و \lr{Caltech-256} نیز برای تسک های \lr{Classification} و \lr{Localization} تست شده است.  نتایج مربوط به دقت این شبکه در جداول زیر آمده است. این شبکه برای ارزیابی روی دیتای \lr{ILSVRC} از دو معیار \lr{Top-1 Error} و \lr{Top-5 Error} استفاده کرده است که اولی نسبت تعداد عکس های به اشتباه طبقه‌بندی شده در داده تست است ولی دومی نسبت تعداد عکس‌هایی به کل است که کلاس درست برای این عکس‌ها در ۵ کلاس اول محتمل که شبکه پیش‌بینی کرده است می‌باشد. بنابراین مشخص است که خطای \lr{Top-5} نسبت به خطای \lr{Top-1} همیشه مقدار کمتری برای شبکه‌های مختلف خواهد داشت. علت وجود این نوع جدید از خطا نیز وجود ۱۰۰۰ کلاس در دیتای \lr{ILSVRC} می‌باشد که تعداد خیلی زیادی است و شهود آن به این معنی است که اگر شبکه برای عکس ورودی از بین ۱۰۰۰ کلاس، کلاس درست را در ۵ کلاس محتمل‌ترین برای یک عکس ببیند، قابل قبول است و خطا نیست. نتایج مربوط به این خطا نیز برای این دیتا در جدول زیر آمده است.
+این شبکه در سال ۲۰۱۴ در کنفرانس \lr{ICLR} معرفی شد. این شبکه دو نوع \lr{VGG16} و \lr{VGG19} دارد که به ترتیب از ۱۶ و ۱۹ لایه تشکیل شده‌اند. در این شبکه‌ها فیلتر های وزن در لایه‌های کانوولوشنی بسیار کوچک می‌باشند و در سایز ۳ در ۳ می‌باشند که طبق گفته مقاله این شبکه، این فیلتر‌ها باعث عمیق‌تر کردن شبکه و عین حال نتیجه بهتر نسبت به مدل‌های مشابه گرفتن‌، می‌باشند. در واقع وجود این فیلتر‌ها باعث شده تا تعداد لایه ‌های شبکه تا ۱۶ یا ۱۹ لایه پیش‌برود و دقت آن نیز نسبت به مدل‌های مشابه بهتر باشد. این شبکه  برنده مسابقه \lr{IMAGENET Challenge} در تسک \lr{Localization} در سال ۲۰۱۴ و برنده مقام دومی در تسک \lr{Classification} در همان سال می‌باشد. این مسابقه که هرساله برگزار می‌شود دارای دیتای بسیار معروفی به نام \lr{ILSVRC} باشد. این شبکه با بیشتر کردن عمق‌ خود با استفاده از فیکس کردن سایز فیلتر‌های وزن لایه‌های کانوولوشن و بسیار کوچک بودن سایز آن سعی در بهتر کردن دقت خود داشته است و در این زمینه نیز موفق بوده است. طبق گفته نویسندگان این مقاله، این شبکه نه تنها برای دیتای مسابقه \lr{ILSVRC} بسیار خوب عمل می‌کند بلکه روی دیتای مسابقه‌های دیگر نیز بسیار خود عمل کرده است. این شبکه علاوه بر دیتای \lr{ILSVRC} در مقاله‌ خود بر روی دیتاهای \lr{VOC-2012}،\lr{VOC-2007}، \lr{Caltech-101} و \lr{Caltech-256} نیز برای تسک های \lr{Classification} و \lr{Localization} تست شده است.  نتایج مربوط به دقت این شبکه در جداول زیر آمده است. این شبکه برای ارزیابی روی دیتای \lr{ILSVRC} از دو معیار \lr{Top-1 Error} و \lr{Top-5 Error} استفاده کرده است که اولی نسبت تعداد عکس های به اشتباه طبقه‌بندی شده در داده تست است ولی دومی نسبت تعداد عکس‌هایی به کل است که کلاس درست برای این عکس‌ها در ۵ کلاس اول محتمل که شبکه پیش‌بینی کرده است می‌باشد. بنابراین مشخص است که خطای \lr{Top-5} نسبت به خطای \lr{Top-1} همیشه مقدار کمتری برای شبکه‌های مختلف خواهد داشت. علت وجود این نوع جدید از خطا نیز وجود ۱۰۰۰ کلاس در دیتای \lr{ILSVRC} می‌باشد که تعداد خیلی زیادی است و شهود آن به این معنی است که اگر شبکه برای عکس ورودی از بین ۱۰۰۰ کلاس، کلاس درست را در ۵ کلاس محتمل‌ترین برای یک عکس ببیند، قابل قبول است و خطا نیست. نتایج مربوط به این خطا نیز برای این دیتا در جدول زیر آمده است.همانطور که از جداول نیز مشخص است، دقت این شبکه روی دیتای اصلی، در حدود ۷۶ درصد برای \lr{Top-1} و درحدود ۹۳ درصد برای \lr{Top-5} می‌باشد.
 ‌\begin{figure}[H]
 	\centerline{\includegraphics[width=13cm, height=5cm]{VGG_results_1}}
 	\caption{جدول مربوط نتایج شبکه \lr{VGG} روی دیتای \lr{ILSVRC}}
@@ -93,7 +168,141 @@
 	\caption {ابعاد وزن‌ها و ورودی و تعداد پارامتر‌های قابل یادگیری در لایه‌های مختلف در شبکه \lr{VGG16}}
 \end{figure}
 \subsection{گزارش فیلتر‌های هر لایه و مقایسه اولین و آخرین فیلتر}
+با توجه به اینکه عکس مربوط به خروجی وزن‌های فیلتر هر لایه بسیار زیاد است، تمامی این عکس‌ها در پوشه‌هایی با نام های هر بلاک شبکه \lr{VGG16} ذخیره شده‌اند. در اینجا تنها چند نمونه از این خروجی‌ها را در گزارش می‌آوریم اما برای دسترسی به همه فیلتر‌ها لطفا به پوشه‌های همراه گزارش مراجعه بفرمائید.در مقایسه فیلتر لایه اول و آخر می‌توان گفت، از آنجایی که در لایه آخر اعداد فیلتر‌ها هرکدام در بازه ۰.۰۳ تا منفی ۰.۰۲ هستند اما اعداد فیلتر لایه اول از بازه ۰.۳ تا ۰.۲ هستند، پس اعداد این فیلتر ویژگی‌های با معنی‌تر و ساده‌تری را از ورودی خود که عکس باشد، استخراج می‌کنند در حالی که هر چه به سمت لایه های آخر نزدیک‌تر می‌شویم،‌این ویژگی‌های استخراج شده پیچیده‌تر و پیچیده‌تر می‌شوند. این مطلب از میزان حساسیت فیلترهای لایه اول و آخر معلوم است. پس بازه اعداد فیلتر لایه آخر کمتر و ويژگی‌استخراج شده توسط این لایه نیز بسیار پیچیده‌تر می باشد. 
+
+لازم به ذکر است که در عکس‌های بالا و عکس های ضمیمه شده، تمام فیلتر‌های ۳ در ۳ به صورت یک ۹تایی نمایش داده‌شده‌اند، یعنی اگر یک فیلتر لایه سوم ۲۵۶ در ۳ در ۳ می‌باشد، این عکس به صورت ۲۵۶ در ۹ نمایش داده شده‌است. برای هر فیلتر نیز یک عکس جدا نمایش داده شده است.
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=5cm, height=10cm]{filters/block1_conv1/filter_13}}
+	\caption{فیلتر سیزدهم لایه \lr{block1\_conv1}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=5cm, height=10cm]{filters/block1_conv2/filter_19}}
+	\caption{فیلتر نوزدهم لایه \lr{block1\_conv2}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=5cm, height=10cm]{filters/block2_conv1/filter_12}}
+	\caption{فیلتر دوازدهم لایه \lr{block2\_conv1}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=5cm, height=10cm]{filters/block2_conv2/filter_8}}
+	\caption{فیلتر هشتم لایه \lr{block2\_conv2}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=5cm, height=10cm]{filters/block3_conv1/filter_51}}
+	\caption{فیلتر پنجاه و یکم لایه \lr{block3\_conv1}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=5cm, height=10cm]{filters/block3_conv2/filter_51}}
+	\caption{فیلتر پنجاه و یکم لایه \lr{block3\_conv2}}
+\end{figure}
+
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=5cm, height=10cm]{filters/block3_conv3/filter_51}}
+	\caption{فیلتر پنجاه و یکم لایه \lr{block3\_conv3}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=5cm, height=10cm]{filters/block4_conv1/filter_51}}
+	\caption{فیلتر پنجاه و یکم لایه \lr{block4\_conv1}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=5cm, height=10cm]{filters/block4_conv2/filter_51}}
+	\caption{فیلتر پنجاه و یکم لایه \lr{block4\_conv2}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=5cm, height=10cm]{filters/block4_conv3/filter_51}}
+	\caption{فیلتر پنجاه و یکم لایه \lr{block4\_conv3}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=5cm, height=10cm]{filters/block5_conv1/filter_51}}
+	\caption{فیلتر پنجاه و یکم لایه \lr{block5\_conv1}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=5cm, height=10cm]{filters/block5_conv2/filter_51}}
+	\caption{فیلتر پنجاه و یکم لایه \lr{block5\_conv2}}
+\end{figure}
+
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=5cm, height=10cm]{filters/block5_conv3/filter_2}}
+	\caption{فیلتر دوم لایه \lr{block5\_conv3}}
+\end{figure}
+
 \subsection{تحلیل نتایج لایه‌های ۳ و ۱۳ حاصل از ورودی های جدید شبکه}
+تصویر مربوط به یکی از فیلتر‌های لایه سوم و سیزدهم برای هر تصویر در زیر آمده است. همانطور که مشخص قابل مشاهده است، لایه سوم که لایه کم‌عمق‌تری نسبت به لایه‌سیزدهم است، ویژگی‌های قابل مشا‌هده‌تری نسبت به لایه‌سیزدهم استخراج کرده‌است و تسک \lr{Edge Detection} در این لایه به مراتب قابل مشاهده تر از لایه سیزدهم است. در واقع این لایه ویژگی‌های ساده‌ و مشخص‌تری را ابتدا از تصویر استخراج می‌کند و در ورودی بعد از گذر از چند لایه به لایه سیزدهم می‌دهد و لایه سیزدهم از ورودی استخراج شده از تصویر، ویژگی جدید‌تری را استخراج می‌کند که این ویژگی به شدت \lr{Abstract} تر از ویژگی‌های استخراج شده از لایه‌ سوم است. این مطلب در تمام فیلتر‌ها برای ۶ عکس ورودی قابل مشاهده است. در نتیجه می‌توان گفت که نورون های لایه سوم، وظیفه استخراج‌کردن ویژگی‌های ساده‌تری نسبت به نورون‌های لایه های بعد از خود از جمله لایه سیزدهم را دارند. پس هر چه شبکه‌عمیق‌تر می‌شود، ویژگی های استخراج شده دارای تجرد و پیچیدگی بیشتری می‌باشند که توسط انسان قابل تشخیص به صورت آسان نیستند. خروجی لایه سیزدهم و سوم برای هر عکس نیز در ضمیمه در پوشه \lr{imagesFilters} آمده است.
+\begin{figure}[H]
+	\centerline{\includegraphics[width=15cm, height=15cm]{images_filters/brown_bear/block1_pool_6}}
+	\caption{خروجی فیلتر ششم لایه سوم عکس \lr{brown\_bear}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=15cm, height=15cm]{images_filters/brown_bear/block4_conv3_27}}
+	\caption{خروجی فیلتر بیست و هفتم لایه سیزدهم عکس \lr{brown\_bear}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=15cm, height=15cm]{images_filters/cat_dog/block1_pool_6}}
+	\caption{خروجی فیلتر ششم لایه سوم عکس \lr{cat\_dog}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=15cm, height=15cm]{images_filters/cat_dog/block4_conv3_27}}
+	\caption{خروجی فیلتر بیست و هفتم لایه سیزدهم عکس \lr{cat\_dog}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=15cm, height=15cm]{images_filters/dd_tree/block1_pool_6}}
+	\caption{خروجی فیلتر ششم لایه سوم عکس \lr{dd\_tree}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=15cm, height=15cm]{images_filters/dd_tree/block4_conv3_27}}
+	\caption{خروجی فیلتر بیست و هفتم لایه سیزدهم عکس \lr{dd\_tree}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=15cm, height=15cm]{images_filters/dog_beagle/block1_pool_6}}
+	\caption{خروجی فیلتر ششم لایه سوم عکس \lr{dog\_beagle}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=15cm, height=15cm]{images_filters/dog_beagle/block4_conv3_27}}
+	\caption{خروجی فیلتر بیست و هفتم لایه سیزدهم عکس \lr{dog\_beagle}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=15cm, height=15cm]{images_filters/scenery/block1_pool_6}}
+	\caption{خروجی فیلتر ششم لایه سوم عکس \lr{scenery}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=15cm, height=15cm]{images_filters/scenery/block4_conv3_27}}
+	\caption{خروجی فیلتر بیست و هفتم لایه سیزدهم عکس \lr{scenery}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=15cm, height=15cm]{images_filters/space_shuttle/block1_pool_6}}
+	\caption{خروجی فیلتر ششم لایه سوم عکس \lr{space\_shuttle}}
+\end{figure}
+
+\begin{figure}[H]
+	\centerline{\includegraphics[width=15cm, height=15cm]{images_filters/space_shuttle/block4_conv3_27}}
+	\caption{خروجی فیلتر بیست و هفتم لایه سیزدهم عکس \lr{space\_shuttle}}
+\end{figure}
+
+
+
 \section{\lr{DeConvolution}}
 \subsection{رسم شبکه عصبی و مشخصات هر لایه}
 همانطور که از کد مشخص است، این شبکه، در قسمت \lr{encoder} همان شبکه \lr{VGG16} می‌باشد که معماری و مشخصات آن در سوال دوم کشیده و توضیح داده شد. این شبکه در قسمت \lr{Decoder} خود، دقیقا برعکس \lr{VGG} عمل می‌کند یعنی به ازای هر لایه \lr{Convolution} یک لایه \lr{Deconvolution} و به ازای هر لایه \lr{Pooling} یک لایه \lr{Unpooling} گذاشته شده است و در نهایت در خروجی شبکه، سایز تصویر برابر 
@@ -108,7 +317,12 @@
 	\caption{عکس مربوط به شبکه \lr{Deconvnet} در اینترنت}
 \end{figure}
 \subsection{کاربر در شبکه های عمیق}
+باتوجه به اینکه یک شی در تصویر معمولا خیلی بزرگتر یا خیلی کوچکتر از \lr{Receptive Field} می‌باشد، که این باعث می‌شود که به مشکل \lr{Fragmentation} و یا \lr{Mislabeled Objects} بخوریم. شی های کوچک معمولا در مسئله‌های \lr{Classification} توسط شبکه \lr{ignore} می‌شوند و به عنوان \lr{Background} با آنها برخورد می‌شود. به همین منظور با مسئله \lr{Semantic Segmentation}به عنوان مسئله\lr{Instance-wise Segmentation} برخورد می‌شود. در ابتدا ۵۰ \lr{Region} اول از ۲۰۰۰ تا توسط الگوریتم \lr{Object Detection} مانند \lr{EdgeBox} انتخاب می‌شوند و سپس  شبکه \lr{Deconvnet} به هر \lr{Proposal} اعمال می‌شود و خروجی همه پروپوزال‌ها باهم \lr{Aggregate}  می‌شوند. بنابراین شبکه \lr{Deconvnet} یک کاربرد بزرگ و خیلی مهم در مسئله \lr{Segmentation} دارد. درواقع مسئله خیلی کوچک یا بزرگ بودن شی در تصویر نسبت به \lr{Receptive Field} در \lr{FCN} را که باعث \lr{Segmentation} پر خطا می‌شود، شبکه \lr{Deconvnet} به خوبی حل  می‌کند و به دقت خیلی بهتری می‌رسد. همچنین این شبکه ویژگی‌های \lr{Generative} تری را نسبت به شبکه‌های دیگر در لایه‌های خود یادمی‌گیرد.
 \subsection{نحوه عملکر این لایه و تفاوت با لایه \lr{Convolution}}
+عملکرد لایه \lr{DeConvolution} درست بر عکس لایه \lr{Convolution} می‌باشد. این لایه در واقع از عکس با سایز کوچکتر عملیات \lr{Conv} برعکس را انجام می‌دهد و به عکس با سایز بزرگتر می‌رسد. در واقع در این عملیات،‌\lr{Upsampling} رخ می‌دهد که بر خلاف \lr{Unpooling} قابل یادگیری است. تصویر زیر عملکرد لایه \lr{DeConvolution} را نشان می‌دهد.در واقع ما در \lr{Convolution}،‌ عملیات \lr{DownSampling} را انجام می‌دهیم اما در \lr{DeConvolution} به صورت عکس عمل می‌کنیم و \lr{Upsampling} را انجام می‌دهیم.
 
-
+\begin{figure}[H]
+	\centerline{\includegraphics[width=13cm, height=5cm]{conv_vs_deconv}}
+	\caption{تفاوت لایه \lr{convolution} با لایه \lr{DeConvolution}}
+\end{figure}
 \end{document}

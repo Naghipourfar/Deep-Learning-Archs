@@ -427,18 +427,14 @@ if __name__ == '__main__':
     filter_windows = [(5, 5), (5, 5)]
     pooling_shapes = [(2, 2), (2, 2)]
     model = CNN(filters=filters, filter_windows=filter_windows, pooling_shapes=pooling_shapes, n_outputs=10,
-                save_folder="CNN", task_num=1)
-    # model.fit(n_epochs=10000, batch_size=64, verbose=1)
-    #
-    # model = CNN(filters=filters, filter_windows=filter_windows, pooling_shapes=pooling_shapes, n_outputs=10,
-    #             save_folder="CNN", task_num=2)
-    # model.restore()
-    #
-    # model = CNN(filters=filters, filter_windows=filter_windows, pooling_shapes=pooling_shapes, n_outputs=10,
-    #             save_folder="CNN", task_num=3)
-    # model.restore()
-    #
-    # model = CNN(filters=filters, filter_windows=filter_windows, pooling_shapes=pooling_shapes, n_outputs=2,
-    #             save_folder="CNN", task_num=3)
-    # model.restore()
-    # model.fit(n_epochs=10000, batch_size=64, verbose=1)
+                save_folder="CNN_without_Regularization", task_num=1)
+    model.fit(n_epochs=20000, batch_size=64, verbose=1)
+    model = CNN(filters=filters, filter_windows=filter_windows, pooling_shapes=pooling_shapes, n_outputs=10,
+                save_folder="CNN_with_BN", task_num=2)
+    model.fit(n_epochs=20000, batch_size=64, verbose=1)
+    model = CNN(filters=filters, filter_windows=filter_windows, pooling_shapes=pooling_shapes, n_outputs=10,
+                save_folder="CNN_with_dropout", task_num=3)
+    model.fit(n_epochs=20000, batch_size=64, verbose=1)
+    model = CNN(filters=filters, filter_windows=filter_windows, pooling_shapes=pooling_shapes, n_outputs=10,
+                save_folder="CNN_with_Regularization", task_num=4)
+    model.fit(n_epochs=20000, batch_size=64, verbose=1)

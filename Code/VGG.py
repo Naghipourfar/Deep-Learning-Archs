@@ -1,7 +1,7 @@
 import os
-
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
+from keras import Model
 from keras.applications.vgg16 import VGG16, preprocess_input
 from keras.utils.vis_utils import plot_model
 from keras_preprocessing.image import load_img, img_to_array
@@ -37,28 +37,41 @@ if __name__ == '__main__':
             print(layer_filters.shape)
             os.makedirs("../Results/Description-5/filters/%s/" % layer_name, exist_ok=True)
             for c in range(n_filters):
-                fig, axes = plt.subplots(n_in_channels, 1, figsize=(15, 15))
-                plt.tick_params(labelbottom=False)
-                for i in range(n_in_channels):
-                    filter_window = layer_filters[:, :, i, c]
-                    im = axes[i].imshow(filter_window, aspect='auto', interpolation='nearest', cmap="Blues", vmin=0,
-                                        vmax=1)
-                    axes[i].axis('off')
-                fig.subplots_adjust(right=0.8)
-                cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
-                cbar = fig.colorbar(im, cax=cbar_ax)
-                # cbar.set_ticks([0.0, 0.5, 1.0])
-                # cbar.set_ticklabels([0.0, 0.5, 1.0])
-                # plt.axis('off')
-                plt.savefig("../Results/Description-5/filters/%s/%s_filter_%d.pdf" % (layer_name, layer_name, c))
+                filter_window = np.reshape(layer_filters[:, :, :, c], newshape=(-1, 9))
+                plt.figure(figsize=(10, 10))
+                plt.axis("off")
+                im = plt.imshow(filter_window, aspect="auto", interpolation="nearest", cmap="Blues")
+                cbar_ax = plt.axes([.9, 0.15, 0.05, 0.7])
+                cbar = plt.colorbar(im, cax=cbar_ax)
+                plt.savefig("../Results/Description-5/filters/%s/filter_%d.pdf" % (layer_name, c))
                 plt.close()
 
     # -----------------------------------------------------------------
     # Part C:
+    # layer_name = "encoded"
+    # encoded_layer_model = Model(inputs=model.input, outputs=model.get_layer(layer_name).output)
+    # encoded_output = encoded_layer_model.predict(df_m_rna)
     path = "../Results/Images/"
+    layer_names = ["block1_pool", "block4_conv3"]
     image_filenames = os.listdir(path)
     for image_filename in image_filenames:
         image = load_img(path + image_filename, target_size=(224, 224))
         image = img_to_array(image)
         image = image.reshape((1, image.shape[0], image.shape[1], image.shape[2]))
         image = preprocess_input(image)
+        for layer_name in layer_names:
+            new_model = Model(inputs=model.input, outputs=model.get_layer(layer_name).output)
+            filter_windows = new_model.predict(image)[0, :, :, :]
+            for i in range(filter_windows.shape[2]):
+                filter_window = filter_windows[:, :, i]
+                plt.figure(figsize=(10, 10))
+                plt.axis("off")
+                im = plt.imshow(filter_window, aspect="auto", interpolation="nearest", cmap="Blues")
+                cbar_ax = plt.axes([.9, 0.15, 0.05, 0.7])
+                cbar = plt.colorbar(im, cax=cbar_ax)
+                os.makedirs("../Results/Description-5/images_filters/%s/" % (image_filename.split(".")[0]),
+                            exist_ok=True)
+                plt.savefig(
+                    "../Results/Description-5/images_filters/%s/%s_%d.pdf" % (
+                    image_filename.split(".")[0], layer_name, i))
+                plt.close()
