@@ -131,7 +131,7 @@ if __name__ == '__main__':
 
     # RNN (LSTM) with 10 hidden units
     rnn_model = RNN(num_units=10)
-    rnn_model.fit(x_data, y_data, n_epochs=1)  # Train Model
+    rnn_model.fit(x_data, y_data, n_epochs=1000)  # Train Model
     rnn_model.evaluate(x_data, y_data)  # Test for K >= 11 patterns
 
     # Generate Cell State Diagram for k = 15
