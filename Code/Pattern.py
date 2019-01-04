@@ -28,15 +28,18 @@ def convert_seq(seq):
     return converted_seq
 
 
-def generate_pattern(k=10):
-    pattern = ("a" * k) + "N" + ("b" * k)
+def generate_pattern(k=10, pattern_type=1):
+    if pattern_type == 1:
+        pattern = ("a" * k) + "N" + ("b" * k)
+    else:
+        pattern = ("ab" * k) + "N" + ("ba" * k)
     return pattern
 
 
-def generate_data(max_k=11):
+def generate_data(max_k=11, pattern_type=1):
     x_data, y_data = [], []
     for i in range(1, max_k + 1):
-        input_seq = generate_pattern(i)
+        input_seq = generate_pattern(i, pattern_type=pattern_type)
         output_seq = input_seq[1:] + "e"
         x_data.append(convert_seq(input_seq))
         y_data.append(convert_seq(output_seq))
@@ -82,10 +85,10 @@ class RNN(object):
 
             return tf.matmul(outputs[-1], self.weights['out']) + self.biases['out']
 
-        model = LSTM(self.x, num_units=self.num_units)
-        self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=model, labels=self.y))
+        self.model = LSTM(self.x, num_units=self.num_units)
+        self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.model, labels=self.y))
         self.optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.loss)
-        self.correct_prediction = tf.equal(tf.argmax(model, 1), tf.argmax(self.y, 1))
+        self.correct_prediction = tf.equal(tf.argmax(self.model, 1), tf.argmax(self.y, 1))
         self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction, tf.float32))
 
     def fit(self, x_data, y_data, n_epochs, verbose=1):
@@ -100,7 +103,7 @@ class RNN(object):
                 self.sess.run([self.optimizer], feed_dict={self.x: batch_x, self.y: batch_y})
             if i % 10 == 0 and verbose == 1:
                 train_acc, train_loss = self.sess.run([self.accuracy, self.loss],
-                                                 feed_dict={self.x: batch_x, self.y: batch_y})
+                                                      feed_dict={self.x: batch_x, self.y: batch_y})
                 print("Iteration %d: Train Loss: %.4f\tTrain Accuracy: %.4f%%" % (i, train_loss, 100 * train_acc))
 
     def evaluate(self, x_data, y_data):
@@ -108,19 +111,30 @@ class RNN(object):
         for k in range(11, 20):
             print("*" * 100)
             batch_x, batch_y = x_data[k], y_data[k]
+            print(len(batch_x))
+            print(len(batch_y))
             batch_x, batch_y = preprocess_sample(batch_x, batch_y)
             sample_loss, sample_acc = self.sess.run([self.loss, self.accuracy],
-                                               feed_dict={self.x: batch_x, self.y: batch_y})
-            print("Test for K = %d: Loss: %.4f\tAccuracy: %.4f%%" % (k + 1, sample_loss, 100 * sample_acc))
+                                                    feed_dict={self.x: batch_x, self.y: batch_y})
+            true_seq = [dict_char[y_data[k][i]] for i in range(len(y_data))]
+            pred_seq = self.sess.run([self.model], feed_dict={self.x: batch_x, self.y: batch_y})
+            pred_seq = np.argmax(pred_seq[0], axis=1)
+            pred_seq = [dict_char[idx] for idx in pred_seq]
+            true_seq = ''.join(true_seq)
+            pred_seq = ''.join(pred_seq)
+            print("Test for K = %d: Loss: %.4f\tAccuracy: %.4f%%\tPrediction:%s\tTrueSeq:%s" % (
+                k + 1, sample_loss, 100 * sample_acc, pred_seq, true_seq))
 
     def get_cell_state(self, x_data, y_data):
         batch_x, batch_y = x_data, y_data
         batch_x, batch_y = preprocess_sample(batch_x, batch_y)
-        sample_loss, sample_acc = self.sess.run([self.loss, self.accuracy], feed_dict={self.x: batch_x, self.y: batch_y})
+        sample_loss, sample_acc = self.sess.run([self.loss, self.accuracy],
+                                                feed_dict={self.x: batch_x, self.y: batch_y})
         sample_cell_state, sample_outputs = self.sess.run([states, outputs],
-                                                     feed_dict={self.x: batch_x, self.y: batch_y})
+                                                          feed_dict={self.x: batch_x, self.y: batch_y})
         sample_outputs = np.array(sample_outputs)
-        generate_cell_state_image(sample_outputs[0, :, :], filename="cell_state(k=15)(num_units=%d).pdf" % self.num_units)
+        generate_cell_state_image(sample_outputs[0, :, :],
+                                  filename="cell_state(k=15)(num_units=%d).pdf" % self.num_units)
 
 
 if __name__ == '__main__':
@@ -131,7 +145,7 @@ if __name__ == '__main__':
 
     # RNN (LSTM) with 10 hidden units
     rnn_model = RNN(num_units=10)
-    rnn_model.fit(x_data, y_data, n_epochs=1000)  # Train Model
+    rnn_model.fit(x_data, y_data, n_epochs=1)  # Train Model
     rnn_model.evaluate(x_data, y_data)  # Test for K >= 11 patterns
 
     # Generate Cell State Diagram for k = 15
@@ -140,7 +154,7 @@ if __name__ == '__main__':
 
     # RNN (LSTM) with 20 hidden units
     rnn_model = RNN(num_units=20)
-    rnn_model.fit(x_data, y_data, n_epochs=1000)  # Train Model
+    rnn_model.fit(x_data, y_data, n_epochs=1)  # Train Model
     rnn_model.evaluate(x_data, y_data)  # Test for K >= 11 patterns
 
     # Generate Cell State Diagram for k = 15
