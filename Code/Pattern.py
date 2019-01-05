@@ -36,6 +36,14 @@ def generate_pattern(k=10, pattern_type=1):
     return pattern
 
 
+def generate_test_pattern(k=10, pattern_type=1):
+    if pattern_type == 1:
+        pattern = ("a" * k) + "N"
+    else:
+        pattern = ("ab" * k) + "N"
+    return pattern
+
+
 def generate_data(max_k=11, pattern_type=1):
     x_data, y_data = [], []
     for i in range(1, max_k + 1):
@@ -106,24 +114,46 @@ class RNN(object):
                                                       feed_dict={self.x: batch_x, self.y: batch_y})
                 print("Iteration %d: Train Loss: %.4f\tTrain Accuracy: %.4f%%" % (i, train_loss, 100 * train_acc))
 
-    def evaluate(self, x_data, y_data):
+    def evaluate(self, pattern_type=1):
         # Test model for K >= 11
-        for k in range(11, 20):
-            print("*" * 100)
-            batch_x, batch_y = x_data[k], y_data[k]
-            print(len(batch_x))
-            print(len(batch_y))
-            batch_x, batch_y = preprocess_sample(batch_x, batch_y)
-            sample_loss, sample_acc = self.sess.run([self.loss, self.accuracy],
-                                                    feed_dict={self.x: batch_x, self.y: batch_y})
-            true_seq = [dict_char[y_data[k][i]] for i in range(len(y_data))]
-            pred_seq = self.sess.run([self.model], feed_dict={self.x: batch_x, self.y: batch_y})
-            pred_seq = np.argmax(pred_seq[0], axis=1)
-            pred_seq = [dict_char[idx] for idx in pred_seq]
-            true_seq = ''.join(true_seq)
-            pred_seq = ''.join(pred_seq)
-            print("Test for K = %d: Loss: %.4f\tAccuracy: %.4f%%\tPrediction:%s\tTrueSeq:%s" % (
-                k + 1, sample_loss, 100 * sample_acc, pred_seq, true_seq))
+        if pattern_type == 1:
+            for k in range(11, 21):
+                x_data = generate_test_pattern(k, pattern_type=pattern_type)
+                y_data = generate_pattern(k, pattern_type=pattern_type)
+                X = x_data
+                x_data = convert_seq(x_data)
+                y_data = convert_seq(y_data)
+                print("*" * 100)
+                batch_x, batch_y = preprocess_sample(x_data, y_data)
+                pred_seq = self.sess.run([self.model], feed_dict={self.x: batch_x})
+                pred_seq = np.argmax(pred_seq[0], axis=1)
+                pred_seq = [dict_char[idx] for idx in pred_seq]
+                pred_seq = "".join(pred_seq)
+                pred_seq = X + pred_seq
+                # sample_loss, sample_acc = self.sess.run([self.loss, self.accuracy],
+                #                                         feed_dict={self.x: batch_x, self.y: batch_y})
+                true_seq = generate_pattern(k, pattern_type=pattern_type)
+                print("Test for K = %d: \tPrediction:%s\tTrueSeq:%s" % (
+                    k, pred_seq, true_seq))
+        if pattern_type == 2:
+            for k in range(16, 21):
+                x_data = generate_test_pattern(k, pattern_type=pattern_type)
+                y_data = generate_pattern(k, pattern_type=pattern_type)
+                X = x_data
+                x_data = convert_seq(x_data)
+                y_data = convert_seq(y_data)
+                print("*" * 100)
+                batch_x, batch_y = preprocess_sample(x_data, y_data)
+                pred_seq = self.sess.run([self.model], feed_dict={self.x: batch_x})
+                pred_seq = np.argmax(pred_seq[0], axis=1)
+                pred_seq = [dict_char[idx] for idx in pred_seq]
+                pred_seq = "".join(pred_seq)
+                pred_seq = X + pred_seq
+                # sample_loss, sample_acc = self.sess.run([self.loss, self.accuracy],
+                #                                         feed_dict={self.x: batch_x, self.y: batch_y})
+                true_seq = generate_pattern(k, pattern_type=pattern_type)
+                print("Test for K = %d: \tPrediction:%s\tTrueSeq:%s" % (
+                    k, pred_seq, true_seq))
 
     def get_cell_state(self, x_data, y_data):
         batch_x, batch_y = x_data, y_data
@@ -145,17 +175,21 @@ if __name__ == '__main__':
 
     # RNN (LSTM) with 10 hidden units
     rnn_model = RNN(num_units=10)
-    rnn_model.fit(x_data, y_data, n_epochs=1)  # Train Model
-    rnn_model.evaluate(x_data, y_data)  # Test for K >= 11 patterns
+    rnn_model.fit(x_data, y_data, n_epochs=1000)  # Train Model
+    rnn_model.evaluate(pattern_type=1)  # Test for K >= 11 patterns
 
     # Generate Cell State Diagram for k = 15
     k = 14
     rnn_model.get_cell_state(x_data[k], y_data[k])
 
+    # Loading Data
+    x_data, y_data = generate_data(max_k=15, pattern_type=2)
+    n_patterns = len(x_data)
+    print("Number of all patterns are %d" % n_patterns)
     # RNN (LSTM) with 20 hidden units
     rnn_model = RNN(num_units=20)
-    rnn_model.fit(x_data, y_data, n_epochs=1)  # Train Model
-    rnn_model.evaluate(x_data, y_data)  # Test for K >= 11 patterns
+    rnn_model.fit(x_data, y_data, n_epochs=1000)  # Train Model
+    rnn_model.evaluate(pattern_type=2)  # Test for K >= 11 patterns
 
     # Generate Cell State Diagram for k = 15
     k = 14
