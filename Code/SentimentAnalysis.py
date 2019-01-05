@@ -26,11 +26,13 @@ def get_word2vec_vectors():
 
 
 def get_next_train_batch():
+    print(ids)
+    print(len(ids))
     labels = []
     arr = np.zeros([batch_size, max_seq_length])
     for i in range(batch_size):
         if i % 2 == 0:
-            num = randint(1, 11499)
+            num = randint(1, 11855)
             labels.append([1, 0])
         else:
             num = randint(13499, 24999)
@@ -183,34 +185,24 @@ if __name__ == '__main__':
     prediction = tf.nn.softmax(prediction)
 
     threshold = tf.ones([batch_size, n_classes], dtype=tf.float32)
-
     threshold = tf.scalar_mul(0.05, threshold)
-
     diff = tf.abs(tf.subtract(prediction, y))
-
     correct_prediction = tf.less(diff, threshold)
-
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-
     loss = tf.losses.mean_squared_error(y, prediction)
-
     optimizer = tf.train.AdamOptimizer(learning_rate=0.001).minimize(loss)
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        for i in range(n_epochs):
+            next_batch, next_batch_labels = get_next_train_batch()
+            sess.run(optimizer, feed_dict={x: next_batch, y: next_batch_labels})
+            train_acc = sess.run(accuracy, feed_dict={x: next_batch, y: next_batch_labels})
+            train_loss = sess.run(loss, feed_dict={x: next_batch, y: next_batch_labels})
+            print("Iteration %d: Train Loss: %.4f\tTrain Accuracy: %.4f%%" % (i, train_loss, 100 * train_acc))
 
-    sess = tf.InteractiveSession()
-    sess.run(tf.global_variables_initializer())
-
-    for i in range(n_epochs):
-        next_batch, next_batch_labels = get_next_train_batch()
-
-        sess.run(optimizer, feed_dict={x: next_batch, y: next_batch_labels})
-
-        train_acc = sess.run(accuracy, feed_dict={x: next_batch, y: next_batch_labels})
-        train_loss = sess.run(loss, feed_dict={x: next_batch, y: next_batch_labels})
-        print("Iteration %d: Train Loss: %.4f\tTrain Accuracy: %.4f%%" % (i, train_loss, 100 * train_acc))
-
-    iterations = 10
-    for i in range(iterations):
-        next_batch, next_batch_labels = get_next_test_batch()
-        test_acc = sess.run(accuracy, feed_dict={x: next_batch, y: next_batch_labels})
-        test_loss = sess.run(loss, feed_dict={x: next_batch, y: next_batch_labels})
-        print("Iteration %d: Test Loss: %.4f\tTest Accuracy: %.4f%%" % (i, test_loss, 100 * test_acc))
+        iterations = 5
+        for i in range(iterations):
+            next_batch, next_batch_labels = get_next_test_batch()
+            test_acc = sess.run(accuracy, feed_dict={x: next_batch, y: next_batch_labels})
+            test_loss = sess.run(loss, feed_dict={x: next_batch, y: next_batch_labels})
+            print("Iteration %d: Test Loss: %.4f\tTest Accuracy: %.4f%%" % (i, test_loss, 100 * test_acc))
